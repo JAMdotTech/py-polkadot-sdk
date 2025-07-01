@@ -16,7 +16,6 @@
 import os
 import unittest
 
-from scalecodec import ScaleBytes
 from scalecodec.type_registry import load_type_registry_file
 from substrateinterface import SubstrateInterface, Keypair, ExtrinsicReceipt
 from substrateinterface.exceptions import SubstrateRequestException
@@ -91,7 +90,7 @@ class CreateExtrinsicsTestCase(unittest.TestCase):
 
                 self.fail('Should raise no funds to pay fees exception')
 
-            except SubstrateRequestException as e:
+            except SubstrateRequestException:
                 # Extrinsic should be successful if account had balance, eitherwise 'Bad proof' error should be raised
                 pass
 

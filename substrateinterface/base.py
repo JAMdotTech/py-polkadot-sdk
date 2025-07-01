@@ -29,7 +29,7 @@ from typing import Optional, Union, List
 from websocket import create_connection, WebSocketConnectionClosedException
 
 from scalecodec.base import ScaleBytes, RuntimeConfigurationObject, ScaleType
-from scalecodec.types import GenericCall, GenericExtrinsic, Extrinsic, MultiAccountId, GenericRuntimeCallDefinition
+from scalecodec.types import GenericCall, GenericExtrinsic, MultiAccountId, GenericRuntimeCallDefinition
 from scalecodec.type_registry import load_type_registry_preset
 from scalecodec.updater import update_type_registries
 from .extensions import Extension
@@ -40,8 +40,8 @@ from .storage import StorageKey
 from .exceptions import SubstrateRequestException, ConfigurationError, StorageFunctionNotFound, BlockNotFound, \
     ExtrinsicNotFound, ExtensionCallNotFound
 from .constants import *
-from .keypair import Keypair, KeypairType, MnemonicLanguageCode
-from .utils.ss58 import ss58_decode, ss58_encode, is_valid_ss58_address, get_ss58_format
+from .keypair import Keypair
+from .utils.ss58 import ss58_decode, ss58_encode, is_valid_ss58_address
 
 
 __all__ = ['SubstrateInterface', 'ExtrinsicReceipt', 'logger']
@@ -2343,7 +2343,7 @@ class SubstrateInterface:
                             extrinsic_decoder.decode(check_remaining=self.config.get('strict_scale_decode'))
                             block_data['extrinsics'][idx] = extrinsic_decoder
 
-                        except Exception as e:
+                        except Exception:
                             if not ignore_decoding_errors:
                                 raise
                             block_data['extrinsics'][idx] = None

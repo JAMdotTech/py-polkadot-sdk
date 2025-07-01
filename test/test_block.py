@@ -268,7 +268,7 @@ class BlockTestCase(unittest.TestCase):
 
         result = self.substrate.subscribe_block_headers(subscription_handler)
 
-        self.assertEqual(f"callback: 103", result)
+        self.assertEqual("callback: 103", result)
 
     def test_check_requirements(self):
         self.assertRaises(ValueError, self.substrate.get_block,

@@ -18,7 +18,7 @@ import unittest
 from unittest.mock import MagicMock
 
 from scalecodec import GenericExtrinsic
-from scalecodec.type_registry import load_type_registry_file, load_type_registry_preset
+from scalecodec.type_registry import load_type_registry_file
 from substrateinterface.exceptions import SubstrateRequestException
 from scalecodec.base import ScaleBytes
 from substrateinterface import SubstrateInterface, Keypair

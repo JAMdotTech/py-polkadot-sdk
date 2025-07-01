@@ -18,9 +18,6 @@ import unittest
 from unittest.mock import MagicMock
 
 from scalecodec.type_registry import load_type_registry_file
-from test import settings
-
-from scalecodec.exceptions import RemainingScaleBytesNotEmptyException
 
 from substrateinterface import SubstrateInterface
 

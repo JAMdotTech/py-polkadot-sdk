@@ -15,7 +15,6 @@
 # limitations under the License.
 
 import unittest
-from unittest.mock import MagicMock
 
 from substrateinterface import SubstrateInterface
 from substrateinterface.exceptions import StorageFunctionNotFound
@@ -73,7 +72,7 @@ class QueryTestCase(unittest.TestCase):
         self.assertEqual('Pallet "Unknown" not found', str(cm.exception))
 
     def test_missing_params(self):
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(ValueError):
             self.kusama_substrate.query("System", "Account")
 
     def test_modifier_default_result(self):

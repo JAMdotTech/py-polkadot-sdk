@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from substrateinterface import SubstrateInterface
 from substrateinterface.extensions import SubstrateNodeExtension
