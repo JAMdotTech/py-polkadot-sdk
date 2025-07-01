@@ -70,6 +70,8 @@ jobs:
     - name: Install and import the uploaded package
       run: |
         python -m pip install --upgrade pip
+        # Conflicts: version number is higher on testpypi:(
+        python -m pip install py-bip39-bindings
         set +e
         while true; do
           log=$(
