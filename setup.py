@@ -30,6 +30,9 @@ from os import path, environ
 # Python 3 only projects can skip this import
 from io import open
 
+# FIXME: this should never be used, version shouldn't be resolved at runtime,
+# it has to be shipped with the package. When this is gone, remove workaround
+# from unittests.yml workflow.
 if environ.get('TRAVIS_TAG'):
     version = environ['TRAVIS_TAG'].replace('v', '')
 elif environ.get('CI_COMMIT_TAG'):
