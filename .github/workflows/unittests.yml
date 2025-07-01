@@ -26,6 +26,8 @@ jobs:
         python-version: '3.13'
     - name: Lint and format code with pre-commit
       uses: pre-commit/action@v3.0.1
+      with:
+        extra_args: --all-files -v
 
   test:
     runs-on: ${{ matrix.python-version == '3.7' && 'ubuntu-22.04' || 'ubuntu-latest' }}
