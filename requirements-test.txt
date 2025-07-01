@@ -1,0 +1,7 @@
+pytest>=4.4.0
+
+mkdocs
+mkdocs-material
+mkdocs-autorefs
+mkdocstrings
+mkdocstrings[python]
