@@ -53,3 +53,20 @@ jobs:
     - name: Test with pytest
       run: |
         pytest
+
+  check-docs:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+    - name: Check documentation build
+      run: |
+        pip install -r requirements-docs.txt
+        # TODO: Enable when documentation is fixed
+        mkdocs build  # --strict
