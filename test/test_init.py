@@ -87,7 +87,9 @@ class TestInit(unittest.TestCase):
         )
 
     def test_lru_cache_not_shared(self):
-        block_number = self.kusama_substrate.get_block_number("0xa4d873095aeae6fc1f3953f0a0085ee216bf8629342aaa92bd53f841e1052e1c")
+        block_number = self.kusama_substrate.get_block_number(
+            "0xa4d873095aeae6fc1f3953f0a0085ee216bf8629342aaa92bd53f841e1052e1c"
+        )
         block_number2 = self.polkadot_substrate.get_block_number(
             "0xa4d873095aeae6fc1f3953f0a0085ee216bf8629342aaa92bd53f841e1052e1c")
 

@@ -70,7 +70,10 @@ class BlockTestCase(unittest.TestCase):
                     "jsonrpc": "2.0",
                     "result": {
                         "digest": {
-                            "logs": ['0x066175726120afe0021000000000', '0x05617572610101567be3d55b4885ce3ac6a7b46b28adf138299acc3eb5f11ffa15c3ed0551f22b7220ec676ea947cd6c8daa6fcfa351b11e62651e6e06f5dde59bb566d36e6989']
+                            "logs": [
+                                '0x066175726120afe0021000000000',
+                                '0x05617572610101567be3d55b4885ce3ac6a7b46b28adf138299acc3eb5f11ffa15c3ed0551f22b7220ec676ea947cd6c8daa6fcfa351b11e62651e6e06f5dde59bb566d36e6989'
+                            ]
                         },
                         "extrinsicsRoot": "0xeaa9cd48b36a88ba7cf934cdbcd8f2afc0843978912452529ace7ef2da09691d",
                         "number": "0x67",
@@ -92,7 +95,10 @@ class BlockTestCase(unittest.TestCase):
                                 ],
                                 "header": {
                                     "digest": {
-                                        "logs": ['0x06424142453402000000007c4e1f2000000000', '0x054241424501014630c672ca0561bb045d30cba349f9768560bd66cb40ca1c88fcf345f0d8d63b31d179c2cede66d584cf199a457ba436e9f621bfe0b89bf998069b3ed3d2548e']
+                                        "logs": [
+                                            '0x06424142453402000000007c4e1f2000000000',
+                                            '0x054241424501014630c672ca0561bb045d30cba349f9768560bd66cb40ca1c88fcf345f0d8d63b31d179c2cede66d584cf199a457ba436e9f621bfe0b89bf998069b3ed3d2548e'
+                                        ]
                                     },
                                     "extrinsicsRoot": "0xeaa9cd48b36a88ba7cf934cdbcd8f2afc0843978912452529ace7ef2da09691d",
                                     "number": "0x67",
@@ -134,14 +140,21 @@ class BlockTestCase(unittest.TestCase):
                         "id": 1
                     }
             elif method == 'state_getStorageAt':
-                return {'jsonrpc': '2.0', 'result': '0x04be5ddb1579b72e84524fc29e78609e3caf42e85aa118ebfe0b0ad404b5bdd25f', 'id': 11}
+                return {
+                    'jsonrpc': '2.0',
+                    'result': '0x04be5ddb1579b72e84524fc29e78609e3caf42e85aa118ebfe0b0ad404b5bdd25f',
+                    'id': 11
+                }
             elif method == 'chain_subscribeNewHeads':
                 return result_handler({
                     "jsonrpc": "2.0",
                     "params": {
                         "result": {
                             "digest": {
-                                "logs": ['0x066175726120afe0021000000000', '0x05617572610101567be3d55b4885ce3ac6a7b46b28adf138299acc3eb5f11ffa15c3ed0551f22b7220ec676ea947cd6c8daa6fcfa351b11e62651e6e06f5dde59bb566d36e6989']
+                                "logs": [
+                                    '0x066175726120afe0021000000000',
+                                    '0x05617572610101567be3d55b4885ce3ac6a7b46b28adf138299acc3eb5f11ffa15c3ed0551f22b7220ec676ea947cd6c8daa6fcfa351b11e62651e6e06f5dde59bb566d36e6989'
+                                ]
                             },
                             "extrinsicsRoot": "0xeaa9cd48b36a88ba7cf934cdbcd8f2afc0843978912452529ace7ef2da09691d",
                             "number": "0x67",

@@ -91,7 +91,9 @@ class TestHelperFunctions(unittest.TestCase):
 
         cls.empty_substrate.rpc_request = MagicMock(side_effect=mocked_request)
 
-        cls.error_substrate = SubstrateInterface(url='wss://kusama-rpc.polkadot.io', ss58_format=2, type_registry_preset='kusama')
+        cls.error_substrate = SubstrateInterface(
+            url='wss://kusama-rpc.polkadot.io', ss58_format=2, type_registry_preset='kusama'
+        )
 
         # def mocked_request(method, params):
         #     return {'jsonrpc': '2.0', 'error': {
