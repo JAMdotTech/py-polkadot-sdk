@@ -464,8 +464,12 @@ class ContractExecutionReceipt(ExtrinsicReceipt):
         super(ContractExecutionReceipt, self).__init__(*args, **kwargs)
 
     @classmethod
-    def create_from_extrinsic_receipt(cls, receipt: ExtrinsicReceipt,
-                                      contract_metadata: ContractMetadata, contract_address: str = None) -> "ContractExecutionReceipt":
+    def create_from_extrinsic_receipt(
+        cls,
+        receipt: ExtrinsicReceipt,
+        contract_metadata: ContractMetadata,
+        contract_address: str = None,
+    ) -> "ContractExecutionReceipt":
         """
         Promotes a ExtrinsicReceipt object to a ContractExecutionReceipt. It uses the provided ContractMetadata to
         decode "ContractExecution" events
@@ -498,7 +502,9 @@ class ContractExecutionReceipt(ExtrinsicReceipt):
             for event in self.triggered_events:
 
                 if self.substrate.implements_scaleinfo():
-                    if event.value['module_id'] == 'Contracts' and event.value['event_id'] == 'ContractEmitted' and event.value['attributes']['contract'] == self.contract_address:
+                    if (event.value['module_id'] == 'Contracts'
+                        and event.value['event_id'] == 'ContractEmitted'
+                        and event.value['attributes']['contract'] == self.contract_address):
 
                         contract_data = event['event'][1][1]['data'].value_object
 
@@ -658,13 +664,22 @@ class ContractCode:
         Parameters
         ----------
         keypair
-        constructor: name of the constructor to use, provided in the metadata
-        args: arguments for the constructor
-        value: Value sent to created contract address
-        gas_limit: Gas limit as WeightV2 type. Will default to {'ref_time': 25990000000, 'proof_size': 11990383647911208550}.
-        deployment_salt: optional string or hex-string that acts as a salt for this deployment
-        upload_code: When True the WASM blob itself will be uploaded with the deploy, False if the WASM is already present on-chain
-        storage_deposit_limit: The maximum amount of balance that can be charged to pay for the storage consumed.
+        constructor:
+            Name of the constructor to use, provided in the metadata
+        args:
+            Arguments for the constructor
+        value:
+            Value sent to created contract address
+        gas_limit:
+            Gas limit as `WeightV2` type. Will default to
+            `{'ref_time': 25990000000, 'proof_size': 11990383647911208550}`
+        deployment_salt:
+            optional string or hex-string that acts as a salt for this deployment
+        upload_code:
+            When True the WASM blob itself will be uploaded with the deploy,
+            False if the WASM is already present on-chain
+        storage_deposit_limit:
+            The maximum amount of balance that can be charged to pay for the storage consumed.
 
         Returns
         -------
