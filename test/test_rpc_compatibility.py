@@ -24,8 +24,6 @@ from substrateinterface import SubstrateInterface
 from scalecodec.base import ScaleBytes
 from scalecodec.types import Vec, GenericAddress
 
-from test.fixtures import rpc_methods
-
 
 class RPCCompatilibityTestCase(unittest.TestCase):
 
@@ -193,7 +191,7 @@ class RPCCompatilibityTestCase(unittest.TestCase):
             elif method == 'rpc_methods':
                 return {
                     "jsonrpc": "2.0",
-                    "result": {"methods": rpc_methods},
+                    "result": {"methods": rpc_methods_compat},
                     "id": 1
                 }
 
@@ -211,6 +209,52 @@ class RPCCompatilibityTestCase(unittest.TestCase):
         block_hash = self.substrate.get_chain_head()
         self.assertEqual('0xec828914eca09331dad704404479e2899a971a9b5948345dc40abca4ac818f93', block_hash)
 
+
+rpc_methods_compat = [
+    'author_submitExtrinsic',
+    'author_submitAndWatchExtrinsic',
+    'author_unwatchExtrinsic',
+    'author_pendingExtrinsics',
+    'chain_getBlockHash',
+    'chain_getHeader',
+    'chain_getBlock',
+    'chain_getFinalizedHead',
+    'chain_subscribeNewHead',
+    'chain_subscribeFinalizedHeads',
+    'chain_unsubscribeNewHead',
+    'chain_subscribeNewHeads',
+    'chain_unsubscribeNewHeads',
+    'chain_unsubscribeFinalizedHeads',
+    'state_getRuntimeVersion',
+    'state_getMetadata',
+    'state_getStorage',
+    'state_getKeysPaged',
+    'state_queryStorageAt',
+    'state_call',
+    'state_subscribeRuntimeVersion',
+    'state_unsubscribeRuntimeVersion',
+    'state_subscribeStorage',
+    'state_unsubscribeStorage',
+    'system_localPeerId',
+    'system_nodeRoles',
+    'system_localListenAddresses',
+    'system_chain',
+    'system_properties',
+    'system_name',
+    'system_version',
+    'system_chainType',
+    'system_health',
+    'system_dryRun',
+    'system_accountNextIndex',
+    'payment_queryFeeDetails',
+    'payment_queryInfo',
+    'dev_newBlock',
+    'dev_setStorage',
+    'dev_timeTravel',
+    'dev_setHead',
+    'dev_dryRun',
+    'rpc_methods'
+]
 
 if __name__ == '__main__':
     unittest.main()
