@@ -70,6 +70,7 @@ jobs:
     - name: Install and import the uploaded package
       run: |
         python -m pip install --upgrade pip
+        set +e
         while true; do
           log=$(
             2>&1 python -m pip install \
