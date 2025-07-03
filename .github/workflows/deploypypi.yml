@@ -55,7 +55,7 @@ jobs:
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
         python setup.py sdist bdist_wheel
-        twine upload --repository testpypi dist/* --verbose
+        twine upload dist/* --verbose
 
   check-released:
     runs-on: ubuntu-latest
@@ -70,15 +70,11 @@ jobs:
     - name: Install and import the uploaded package
       run: |
         python -m pip install --upgrade pip
-        # Conflicts: version number is higher on testpypi:(
-        python -m pip install py-bip39-bindings
         set +e
         while true; do
           log=$(
             2>&1 python -m pip install \
-              --index-url https://test.pypi.org/simple/ \
-              --extra-index-url https://pypi.org/simple/ \
-              "test-substrate-interface==${GITHUB_REF#refs/tags/v}"
+              "substrate-interface==${GITHUB_REF#refs/tags/v}"
           )
           status=$?
           if [ "$status" = 0 ]; then
