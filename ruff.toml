@@ -1,0 +1,21 @@
+target-version = "py37"
+line-length = 127
+
+[analyze]
+detect-string-imports = true
+
+[format]
+docstring-code-format = true
+
+[lint]
+# Minimal for now; more rules are needed
+select = ["E", "F"]
+
+[lint.per-file-ignores]
+"test/fixtures.py" = [
+    # Giant blobs
+    "E501"
+]
+"**/__init__.py" = [
+    "F403",  # Allow star imports for reexport
+]

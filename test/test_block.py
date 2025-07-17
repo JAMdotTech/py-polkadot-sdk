@@ -23,7 +23,7 @@ from scalecodec.exceptions import RemainingScaleBytesNotEmptyException
 
 from substrateinterface import SubstrateInterface
 
-from test.fixtures import metadata_node_template_hex
+from test.fixtures import metadata_node_template_hex, rpc_methods
 
 from scalecodec.base import ScaleBytes
 from scalecodec.types import Vec, GenericAddress
@@ -70,7 +70,10 @@ class BlockTestCase(unittest.TestCase):
                     "jsonrpc": "2.0",
                     "result": {
                         "digest": {
-                            "logs": ['0x066175726120afe0021000000000', '0x05617572610101567be3d55b4885ce3ac6a7b46b28adf138299acc3eb5f11ffa15c3ed0551f22b7220ec676ea947cd6c8daa6fcfa351b11e62651e6e06f5dde59bb566d36e6989']
+                            "logs": [
+                                '0x066175726120afe0021000000000',
+                                '0x05617572610101567be3d55b4885ce3ac6a7b46b28adf138299acc3eb5f11ffa15c3ed0551f22b7220ec676ea947cd6c8daa6fcfa351b11e62651e6e06f5dde59bb566d36e6989'
+                            ]
                         },
                         "extrinsicsRoot": "0xeaa9cd48b36a88ba7cf934cdbcd8f2afc0843978912452529ace7ef2da09691d",
                         "number": "0x67",
@@ -92,7 +95,10 @@ class BlockTestCase(unittest.TestCase):
                                 ],
                                 "header": {
                                     "digest": {
-                                        "logs": ['0x06424142453402000000007c4e1f2000000000', '0x054241424501014630c672ca0561bb045d30cba349f9768560bd66cb40ca1c88fcf345f0d8d63b31d179c2cede66d584cf199a457ba436e9f621bfe0b89bf998069b3ed3d2548e']
+                                        "logs": [
+                                            '0x06424142453402000000007c4e1f2000000000',
+                                            '0x054241424501014630c672ca0561bb045d30cba349f9768560bd66cb40ca1c88fcf345f0d8d63b31d179c2cede66d584cf199a457ba436e9f621bfe0b89bf998069b3ed3d2548e'
+                                        ]
                                     },
                                     "extrinsicsRoot": "0xeaa9cd48b36a88ba7cf934cdbcd8f2afc0843978912452529ace7ef2da09691d",
                                     "number": "0x67",
@@ -134,14 +140,21 @@ class BlockTestCase(unittest.TestCase):
                         "id": 1
                     }
             elif method == 'state_getStorageAt':
-                return {'jsonrpc': '2.0', 'result': '0x04be5ddb1579b72e84524fc29e78609e3caf42e85aa118ebfe0b0ad404b5bdd25f', 'id': 11}
+                return {
+                    'jsonrpc': '2.0',
+                    'result': '0x04be5ddb1579b72e84524fc29e78609e3caf42e85aa118ebfe0b0ad404b5bdd25f',
+                    'id': 11
+                }
             elif method == 'chain_subscribeNewHeads':
                 return result_handler({
                     "jsonrpc": "2.0",
                     "params": {
                         "result": {
                             "digest": {
-                                "logs": ['0x066175726120afe0021000000000', '0x05617572610101567be3d55b4885ce3ac6a7b46b28adf138299acc3eb5f11ffa15c3ed0551f22b7220ec676ea947cd6c8daa6fcfa351b11e62651e6e06f5dde59bb566d36e6989']
+                                "logs": [
+                                    '0x066175726120afe0021000000000',
+                                    '0x05617572610101567be3d55b4885ce3ac6a7b46b28adf138299acc3eb5f11ffa15c3ed0551f22b7220ec676ea947cd6c8daa6fcfa351b11e62651e6e06f5dde59bb566d36e6989'
+                                ]
                             },
                             "extrinsicsRoot": "0xeaa9cd48b36a88ba7cf934cdbcd8f2afc0843978912452529ace7ef2da09691d",
                             "number": "0x67",
@@ -159,7 +172,7 @@ class BlockTestCase(unittest.TestCase):
             elif method == 'rpc_methods':
                 return {
                     "jsonrpc": "2.0",
-                    "result": {'methods': ['account_nextIndex', 'author_hasKey', 'author_hasSessionKeys', 'author_insertKey', 'author_pendingExtrinsics', 'author_removeExtrinsic', 'author_rotateKeys', 'author_submitAndWatchExtrinsic', 'author_submitExtrinsic', 'author_unwatchExtrinsic', 'babe_epochAuthorship', 'chainHead_unstable_body', 'chainHead_unstable_call', 'chainHead_unstable_follow', 'chainHead_unstable_genesisHash', 'chainHead_unstable_header', 'chainHead_unstable_stopBody', 'chainHead_unstable_stopCall', 'chainHead_unstable_stopStorage', 'chainHead_unstable_storage', 'chainHead_unstable_unfollow', 'chainHead_unstable_unpin', 'chainSpec_unstable_chainName', 'chainSpec_unstable_genesisHash', 'chainSpec_unstable_properties', 'chain_getBlock', 'chain_getBlockHash', 'chain_getFinalisedHead', 'chain_getFinalizedHead', 'chain_getHead', 'chain_getHeader', 'chain_getRuntimeVersion', 'chain_subscribeAllHeads', 'chain_subscribeFinalisedHeads', 'chain_subscribeFinalizedHeads', 'chain_subscribeNewHead', 'chain_subscribeNewHeads', 'chain_subscribeRuntimeVersion', 'chain_unsubscribeAllHeads', 'chain_unsubscribeFinalisedHeads', 'chain_unsubscribeFinalizedHeads', 'chain_unsubscribeNewHead', 'chain_unsubscribeNewHeads', 'chain_unsubscribeRuntimeVersion', 'childstate_getKeys', 'childstate_getKeysPaged', 'childstate_getKeysPagedAt', 'childstate_getStorage', 'childstate_getStorageEntries', 'childstate_getStorageHash', 'childstate_getStorageSize', 'dev_getBlockStats', 'grandpa_proveFinality', 'grandpa_roundState', 'grandpa_subscribeJustifications', 'grandpa_unsubscribeJustifications', 'mmr_generateProof', 'mmr_root', 'mmr_verifyProof', 'mmr_verifyProofStateless', 'offchain_localStorageGet', 'offchain_localStorageSet', 'payment_queryFeeDetails', 'payment_queryInfo', 'state_call', 'state_callAt', 'state_getChildReadProof', 'state_getKeys', 'state_getKeysPaged', 'state_getKeysPagedAt', 'state_getMetadata', 'state_getPairs', 'state_getReadProof', 'state_getRuntimeVersion', 'state_getStorage', 'state_getStorageAt', 'state_getStorageHash', 'state_getStorageHashAt', 'state_getStorageSize', 'state_getStorageSizeAt', 'state_queryStorage', 'state_queryStorageAt', 'state_subscribeRuntimeVersion', 'state_subscribeStorage', 'state_traceBlock', 'state_trieMigrationStatus', 'state_unsubscribeRuntimeVersion', 'state_unsubscribeStorage', 'subscribe_newHead', 'sync_state_genSyncSpec', 'system_accountNextIndex', 'system_addLogFilter', 'system_addReservedPeer', 'system_chain', 'system_chainType', 'system_dryRun', 'system_dryRunAt', 'system_health', 'system_localListenAddresses', 'system_localPeerId', 'system_name', 'system_nodeRoles', 'system_peers', 'system_properties', 'system_removeReservedPeer', 'system_reservedPeers', 'system_resetLogFilter', 'system_syncState', 'system_unstable_networkState', 'system_version', 'transaction_unstable_submitAndWatch', 'transaction_unstable_unwatch', 'unsubscribe_newHead']},
+                    "result": {'methods': rpc_methods},
                     "id": 1
                 }
 
@@ -268,7 +281,7 @@ class BlockTestCase(unittest.TestCase):
 
         result = self.substrate.subscribe_block_headers(subscription_handler)
 
-        self.assertEqual(f"callback: 103", result)
+        self.assertEqual("callback: 103", result)
 
     def test_check_requirements(self):
         self.assertRaises(ValueError, self.substrate.get_block,

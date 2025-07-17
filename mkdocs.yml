@@ -95,3 +95,7 @@ markdown_extensions:
   - pymdownx.snippets
   - pymdownx.superfences
 
+watch:
+  - docs
+  - substrateinterface
+  - mkdocs.yml

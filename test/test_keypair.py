@@ -145,7 +145,7 @@ class KeyPairTestCase(unittest.TestCase):
     def test_sign_and_verify_incorrect_signature(self):
         mnemonic = Keypair.generate_mnemonic()
         keypair = Keypair.create_from_mnemonic(mnemonic)
-        signature = "0x4c291bfb0bb9c1274e86d4b666d13b2ac99a0bacc04a4846fb8ea50bda114677f83c1f164af58fc184451e5140cc8160c4de626163b11451d3bbb208a1889f8a"
+        signature = "0x4c291bfb0bb9c1274e86d4b666d13b2ac99a0bacc04a4846fb8ea50bda114677f83c1f164af58fc184451e5140cc8160c4de626163b11451d3bbb208a1889f8a"  # noqa: E501
         self.assertFalse(keypair.verify("Test123", signature))
 
     def test_sign_and_verify_invalid_signature(self):
@@ -176,7 +176,7 @@ class KeyPairTestCase(unittest.TestCase):
     def test_sign_and_verify_invalid_signature_ed25519(self):
         mnemonic = Keypair.generate_mnemonic()
         keypair = Keypair.create_from_mnemonic(mnemonic, crypto_type=KeypairType.ED25519)
-        signature = "0x4c291bfb0bb9c1274e86d4b666d13b2ac99a0bacc04a4846fb8ea50bda114677f83c1f164af58fc184451e5140cc8160c4de626163b11451d3bbb208a1889f8a"
+        signature = "0x4c291bfb0bb9c1274e86d4b666d13b2ac99a0bacc04a4846fb8ea50bda114677f83c1f164af58fc184451e5140cc8160c4de626163b11451d3bbb208a1889f8a"  # noqa: E501
         self.assertFalse(keypair.verify("Test123", signature))
 
     def test_create_ecdsa_keypair_private_key(self):
@@ -220,7 +220,7 @@ class KeyPairTestCase(unittest.TestCase):
     def test_sign_and_verify_invalid_signature_ecdsa(self):
         mnemonic = Keypair.generate_mnemonic()
         keypair = Keypair.create_from_mnemonic(mnemonic, crypto_type=KeypairType.ECDSA)
-        signature = "0x24ff874fddab207ac6cae6a5bfe6e3542bb561abc98a22d1cfd7f8396927cf6d4962e198b5d599cf598b3c14cca98ab16d12569b666e8d33899c46d0d814a58200"
+        signature = "0x24ff874fddab207ac6cae6a5bfe6e3542bb561abc98a22d1cfd7f8396927cf6d4962e198b5d599cf598b3c14cca98ab16d12569b666e8d33899c46d0d814a58200"  # noqa: E501
         self.assertFalse(keypair.verify("Test123", signature))
 
     def test_unsupport_crypto_type(self):
@@ -350,11 +350,17 @@ class KeyPairTestCase(unittest.TestCase):
         self.assertRaises(ValueError, extract_derive_path, '//')
 
     def test_encrypt_decrypt_message(self):
-        sender = Keypair.create_from_mnemonic("nominee lift horse divert crop quantum proud between pink goose attack market", crypto_type=KeypairType.ED25519)
+        sender = Keypair.create_from_mnemonic(
+            "nominee lift horse divert crop quantum proud between pink goose attack market",
+            crypto_type=KeypairType.ED25519
+        )
         recipient = Keypair(ss58_address="5DFZ8UzF5zeCLVPVRMkopNjVyxJNb1dHgGJYFDaVbm4CqNku", crypto_type=KeypairType.ED25519)
         message = "Violence is the last refuge of the incompetent - Isaac Asimov, Foundation"
         message_encrypted = sender.encrypt_message(message, recipient.public_key)
-        recipient = Keypair.create_from_mnemonic("almost desk skull craft chuckle bubble hollow innocent require physical purchase rabbit", crypto_type=KeypairType.ED25519)
+        recipient = Keypair.create_from_mnemonic(
+            "almost desk skull craft chuckle bubble hollow innocent require physical purchase rabbit",
+            crypto_type=KeypairType.ED25519
+        )
         sender = Keypair(ss58_address="5DYUhnXkHux1rGTDaS9ACPQekbpSR2J5SyedDQNJVrk4Tn5t", crypto_type=KeypairType.ED25519)
         message_decrypted = recipient.decrypt_message(message_encrypted, sender.public_key).decode("utf-8")
         self.assertEqual(message_decrypted, message)

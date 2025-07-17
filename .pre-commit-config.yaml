@@ -1,0 +1,22 @@
+# This is only a stub, other hooks will land later
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.3
+    hooks:
+      # Disabled until next PR
+      # - id: ruff-format
+      - id: ruff-check
+        args: [--fix]
+
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.33.2
+    hooks:
+      - id: check-github-workflows
+
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.7
+    hooks:
+      - id: actionlint
+        additional_dependencies:
+          - github.com/wasilibs/go-shellcheck/cmd/shellcheck@v0.10.0

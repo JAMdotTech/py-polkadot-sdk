@@ -438,7 +438,8 @@ class FlipperInstanceV5TestCase(FlipperInstanceTestCase):
                 return super().rpc_request(method, params, result_handler)
 
         cls.substrate = MockedSubstrateInterface(
-            url=settings.KUSAMA_NODE_URL, type_registry_preset='canvas', type_registry={'types': {"ContractExecResult": "ContractExecResultTo269"}}
+            url=settings.KUSAMA_NODE_URL, type_registry_preset='canvas',
+            type_registry={'types': {"ContractExecResult": "ContractExecResultTo269"}}
         )
 
         cls.keypair = Keypair.create_from_uri('//Alice')

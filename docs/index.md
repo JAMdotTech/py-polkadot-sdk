@@ -20,7 +20,7 @@ Overview of available [extensions](/extensions/); adding or improving existing f
 ## Metadata docs
 [Documentation of Substrate metadata](https://polkascan.github.io/py-substrate-metadata-docs/) for well known runtimes and how to use it with py-substrate-interface.
 
-## Contact and Support 
+## Contact and Support
 
 For questions, please see the [Substrate StackExchange](https://substrate.stackexchange.com/questions/tagged/python), [Github Discussions](https://github.com/polkascan/py-substrate-interface/discussions) or 
 reach out to us on our [matrix](http://matrix.org) chat group: [Polkascan Technical](https://matrix.to/#/#polkascan:matrix.org).

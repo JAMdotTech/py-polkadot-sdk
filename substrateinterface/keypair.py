@@ -157,8 +157,11 @@ class Keypair:
 
         Parameters
         ----------
-        words: The amount of words to generate, valid values are 12, 15, 18, 21 and 24
-        language_code: The language to use, valid values are: 'en', 'zh-hans', 'zh-hant', 'fr', 'it', 'ja', 'ko', 'es'. Defaults to `MnemonicLanguageCode.ENGLISH`
+        words:
+            The amount of words to generate, valid values are 12, 15, 18, 21 and 24
+        language_code:
+            The language to use, valid values are: 'en', 'zh-hans', 'zh-hant', 'fr', 'it', 'ja', 'ko', 'es'.
+            Defaults to `MnemonicLanguageCode.ENGLISH`
 
         Returns
         -------
@@ -173,8 +176,11 @@ class Keypair:
 
         Parameters
         ----------
-        mnemonic: Seed phrase
-        language_code: The language to use, valid values are: 'en', 'zh-hans', 'zh-hant', 'fr', 'it', 'ja', 'ko', 'es'. Defaults to `MnemonicLanguageCode.ENGLISH`
+        mnemonic:
+            Seed phrase
+        language_code:
+            The language to use, valid values are: 'en', 'zh-hans', 'zh-hant', 'fr', 'it', 'ja', 'ko', 'es'.
+            Defaults to `MnemonicLanguageCode.ENGLISH`
 
         Returns
         -------
@@ -190,10 +196,15 @@ class Keypair:
 
         Parameters
         ----------
-        mnemonic: Seed phrase
-        ss58_format: Substrate address format
-        crypto_type: Use `KeypairType.SR25519` or `KeypairType.ED25519` cryptography for generating the Keypair
-        language_code: The language to use, valid values are: 'en', 'zh-hans', 'zh-hant', 'fr', 'it', 'ja', 'ko', 'es'. Defaults to `MnemonicLanguageCode.ENGLISH`
+        mnemonic:
+            Seed phrase
+        ss58_format:
+            Substrate address format
+        crypto_type:
+            Use `KeypairType.SR25519` or `KeypairType.ED25519` cryptography for generating the Keypair
+        language_code:
+            The language to use, valid values are: 'en', 'zh-hans', 'zh-hant', 'fr', 'it', 'ja', 'ko', 'es'.
+            Defaults to `MnemonicLanguageCode.ENGLISH`
 
         Returns
         -------
@@ -257,7 +268,8 @@ class Keypair:
 
     @classmethod
     def create_from_uri(
-            cls, suri: str, ss58_format: Optional[int] = 42, crypto_type=KeypairType.SR25519, language_code: str = MnemonicLanguageCode.ENGLISH
+            cls, suri: str, ss58_format: Optional[int] = 42,
+            crypto_type=KeypairType.SR25519, language_code: str = MnemonicLanguageCode.ENGLISH
     ) -> 'Keypair':
         """
         Creates Keypair for specified suri in following format: `[mnemonic]/[soft-path]//[hard-path]`
@@ -265,9 +277,14 @@ class Keypair:
         Parameters
         ----------
         suri:
-        ss58_format: Substrate address format
-        crypto_type: Use KeypairType.SR25519 or KeypairType.ED25519 cryptography for generating the Keypair
-        language_code: The language to use, valid values are: 'en', 'zh-hans', 'zh-hant', 'fr', 'it', 'ja', 'ko', 'es'. Defaults to `MnemonicLanguageCode.ENGLISH`
+            Substrate URI to parse
+        ss58_format:
+            Substrate address format
+        crypto_type:
+            Use KeypairType.SR25519 or KeypairType.ED25519 cryptography for generating the Keypair
+        language_code:
+            The language to use, valid values are: 'en', 'zh-hans', 'zh-hant', 'fr', 'it', 'ja', 'ko', 'es'.
+            Defaults to `MnemonicLanguageCode.ENGLISH`
 
         Returns
         -------

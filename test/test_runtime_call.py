@@ -15,10 +15,8 @@
 # limitations under the License.
 
 import unittest
-from unittest.mock import MagicMock
 
 from substrateinterface import SubstrateInterface, Keypair
-from substrateinterface.exceptions import StorageFunctionNotFound
 from test import settings
 
 

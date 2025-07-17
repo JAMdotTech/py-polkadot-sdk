@@ -24,12 +24,12 @@ import json
 import logging
 
 import requests
-from typing import Optional, Union, List
+from typing import Any, Dict, Optional, Union, List
 
-from websocket import create_connection, WebSocketConnectionClosedException
+from websocket import WebSocket, create_connection, WebSocketConnectionClosedException
 
 from scalecodec.base import ScaleBytes, RuntimeConfigurationObject, ScaleType
-from scalecodec.types import GenericCall, GenericExtrinsic, Extrinsic, MultiAccountId, GenericRuntimeCallDefinition
+from scalecodec.types import GenericCall, GenericExtrinsic, MultiAccountId, GenericRuntimeCallDefinition
 from scalecodec.type_registry import load_type_registry_preset
 from scalecodec.updater import update_type_registries
 from .extensions import Extension
@@ -39,9 +39,9 @@ from .storage import StorageKey
 
 from .exceptions import SubstrateRequestException, ConfigurationError, StorageFunctionNotFound, BlockNotFound, \
     ExtrinsicNotFound, ExtensionCallNotFound
-from .constants import *
-from .keypair import Keypair, KeypairType, MnemonicLanguageCode
-from .utils.ss58 import ss58_decode, ss58_encode, is_valid_ss58_address, get_ss58_format
+from .constants import WELL_KNOWN_STORAGE_KEYS
+from .keypair import Keypair
+from .utils.ss58 import ss58_decode, ss58_encode, is_valid_ss58_address
 
 
 __all__ = ['SubstrateInterface', 'ExtrinsicReceipt', 'logger']
@@ -67,22 +67,54 @@ def list_remove_iter(xs: list):
 
 class SubstrateInterface:
 
-    def __init__(self, url=None, websocket=None, ss58_format=None, type_registry=None, type_registry_preset=None,
-                 cache_region=None, runtime_config=None, use_remote_preset=False, ws_options=None,
-                 auto_discover=True, auto_reconnect=True, config=None):
+    def __init__(
+        self,
+        url: Optional[str] = None,
+        websocket: Optional[WebSocket] = None,
+        ss58_format: Optional[int] = None,
+        type_registry: Optional[Dict[str, Any]] = None,
+        type_registry_preset: Optional[str] = None,
+        cache_region: Optional[Any] = None,
+        runtime_config: Optional[RuntimeConfigurationObject] = None,
+        use_remote_preset: bool = False,
+        ws_options: Optional[Dict[str, Any]] = None,
+        auto_discover: bool = True,
+        auto_reconnect: bool = True,
+        config: Optional[Dict[str, Any]] = None,
+    ) -> None:
         """
         A specialized class in interfacing with a Substrate node.
 
         Parameters
         ----------
-        url: the URL to the substrate node, either in format https://127.0.0.1:9933 or wss://127.0.0.1:9944
-        ss58_format: The address type which account IDs will be SS58-encoded to Substrate addresses. Defaults to 42, for Kusama the address type is 2
-        type_registry: A dict containing the custom type registry in format: {'types': {'customType': 'u32'},..}
-        type_registry_preset: The name of the predefined type registry shipped with the SCALE-codec, e.g. kusama
-        cache_region: a Dogpile cache region as a central store for the metadata cache
-        use_remote_preset: When True preset is downloaded from GitHub master, otherwise use files from local installed scalecodec package
-        ws_options: dict of options to pass to the websocket-client create_connection function
-        config: dict of config flags to overwrite default configuration
+        url:
+            The URL to the substrate node, either in format `https://127.0.0.1:9933`
+            or `wss://127.0.0.1:9944`. Conflicts with `websocket`.
+        websocket:
+            An already initialized `websockets.WebSocket`. Conflicts with `url`.
+        ss58_format:
+            The address type which account IDs will be SS58-encoded to Substrate addresses.
+            Defaults to `42`, for Kusama the address type is `2`
+        type_registry:
+            A dict containing the custom type registry in format:
+            `{'types': {'customType': 'u32'},..}`
+        type_registry_preset:
+            The name of the predefined type registry shipped with the SCALE-codec, e.g. kusama
+        cache_region:
+            A Dogpile cache region as a central store for the metadata cache
+        use_remote_preset:
+            When True, download preset from GitHub master, otherwise use files from
+            locally installed scalecodec package
+        runtime_config:
+            Runtime configuration to use.
+        ws_options:
+            A dict of options to pass to the websocket-client create_connection function
+        auto_discover:
+            Whether to guess the preset by chain name.
+        auto_reconnect:
+            Whether to reestablish the websocket connection on failure automatically.
+        config:
+            A dict of config flags to overwrite default configuration
         """
 
         if (not url and not websocket) or (url and websocket):
@@ -170,13 +202,9 @@ class SubstrateInterface:
 
         self.reload_type_registry(use_remote_preset=use_remote_preset, auto_discover=auto_discover)
 
-    def connect_websocket(self):
+    def connect_websocket(self) -> None:
         """
-        (Re)creates the websocket connection, if the URL contains a 'ws' or 'wss' scheme
-
-        Returns
-        -------
-
+        (Re)create the websocket connection, if the URL contains a 'ws' or 'wss' scheme.
         """
         if self.url and (self.url[0:6] == 'wss://' or self.url[0:5] == 'ws://'):
             self.debug_message("Connecting to {} ...".format(self.url))
@@ -187,11 +215,7 @@ class SubstrateInterface:
 
     def close(self):
         """
-        Cleans up resources for this instance like active websocket connection and active extensions
-
-        Returns
-        -------
-
+        Clean up resources for this instance like active websocket connection and active extensions.
         """
         if self.websocket:
             self.debug_message("Closing websocket connection")
@@ -206,17 +230,14 @@ class SubstrateInterface:
         self.close()
 
     @staticmethod
-    def debug_message(message: str):
+    def debug_message(message: str) -> None:
         """
         Submits a message to the debug logger
 
         Parameters
         ----------
-        message: str Debug message
-
-        Returns
-        -------
-
+        message:
+            Debug message
         """
         logger.debug(message)
 
@@ -1385,10 +1406,15 @@ class SubstrateInterface:
 
         Parameters
         ----------
-        call_module: Name of the runtime module e.g. Balances
-        call_function: Name of the call function e.g. transfer
-        call_params: This is a dict containing the params of the call. e.g. `{'dest': 'EaG2CRhJWPb7qmdcJvy3LiWdh26Jreu9Dx6R1rXxPmYXoDk', 'value': 1000000000000}`
-        block_hash: Use metadata at given block_hash to compose call
+        call_module:
+            Name of the runtime module e.g. Balances
+        call_function:
+            Name of the call function e.g. transfer
+        call_params:
+            This is a dict containing the params of the call. e.g.
+            `{'dest': 'EaG2CRhJWPb7qmdcJvy3LiWdh26Jreu9Dx6R1rXxPmYXoDk', 'value': 1000000000000}`
+        block_hash:
+            Use metadata at given block_hash to compose call
 
         Returns
         -------
@@ -2343,7 +2369,7 @@ class SubstrateInterface:
                             extrinsic_decoder.decode(check_remaining=self.config.get('strict_scale_decode'))
                             block_data['extrinsics'][idx] = extrinsic_decoder
 
-                        except Exception as e:
+                        except Exception:
                             if not ignore_decoding_errors:
                                 raise
                             block_data['extrinsics'][idx] = None
@@ -2684,7 +2710,7 @@ class SubstrateInterface:
         """
         self.init_runtime(block_hash=block_hash)
 
-        if type(scale_bytes) == str:
+        if type(scale_bytes) == str:  # noqa: E721
             scale_bytes = ScaleBytes(scale_bytes)
 
         obj = self.runtime_config.create_scale_object(
@@ -2952,19 +2978,17 @@ class SubstrateInterface:
         except Exception:
             return False
 
-    def reload_type_registry(self, use_remote_preset: bool = True, auto_discover: bool = True):
+    def reload_type_registry(self, use_remote_preset: bool = True, auto_discover: bool = True) -> None:
         """
         Reload type registry and preset used to instantiate the SubtrateInterface object. Useful to periodically apply
         changes in type definitions when a runtime upgrade occurred
 
         Parameters
         ----------
-        use_remote_preset: When True preset is downloaded from Github master, otherwise use files from local installed scalecodec package
+        use_remote_preset:
+            When True, download the preset from Github master, otherwise use files
+            from locally installed scalecodec package
         auto_discover
-
-        Returns
-        -------
-
         """
         self.runtime_config.clear_type_registry()
 
@@ -3030,7 +3054,7 @@ class SubstrateInterface:
 class ExtrinsicReceipt:
     """
     Object containing information of submitted extrinsic. Block hash where extrinsic is included is required
-        when retrieving triggered events or determine if extrinsic was succesfull
+        when retrieving triggered events or determine if extrinsic was successful
     """
 
     def __init__(self, substrate: SubstrateInterface, extrinsic_hash: str = None, block_hash: str = None,
