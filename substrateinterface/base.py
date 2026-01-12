@@ -20,13 +20,9 @@ import warnings
 from datetime import datetime
 from hashlib import blake2b
 
-import json
 import logging
 
-import requests
 from typing import Optional, Union, List
-
-from websocket import create_connection, WebSocketConnectionClosedException
 
 from scalecodec.base import ScaleBytes, RuntimeConfigurationObject, ScaleType
 from scalecodec.types import GenericCall, GenericExtrinsic, Extrinsic, MultiAccountId, GenericRuntimeCallDefinition
@@ -42,6 +38,7 @@ from .exceptions import SubstrateRequestException, ConfigurationError, StorageFu
 from .constants import *
 from .keypair import Keypair, KeypairType, MnemonicLanguageCode
 from .utils.ss58 import ss58_decode, ss58_encode, is_valid_ss58_address, get_ss58_format
+from .transport import HttpTransport, WebsocketTransport, SmoldotTransport
 
 
 __all__ = ['SubstrateInterface', 'ExtrinsicReceipt', 'logger']
@@ -49,33 +46,18 @@ __all__ = ['SubstrateInterface', 'ExtrinsicReceipt', 'logger']
 logger = logging.getLogger(__name__)
 
 
-def list_remove_iter(xs: list):
-    removed = False
-    def remove():
-        nonlocal removed
-        removed = True
-
-    i = 0
-    while i < len(xs):
-        removed = False
-        yield xs[i], remove
-        if removed:
-            xs.pop(i)
-        else:
-            i += 1
-
-
 class SubstrateInterface:
 
     def __init__(self, url=None, websocket=None, ss58_format=None, type_registry=None, type_registry_preset=None,
                  cache_region=None, runtime_config=None, use_remote_preset=False, ws_options=None,
-                 auto_discover=True, auto_reconnect=True, config=None):
+                 auto_discover=True, auto_reconnect=True, config=None, chainspec=None):
         """
         A specialized class in interfacing with a Substrate node.
 
         Parameters
         ----------
         url: the URL to the substrate node, either in format https://127.0.0.1:9933 or wss://127.0.0.1:9944
+        chainspec: path to a Substrate chain spec file for Smoldot light client usage
         ss58_format: The address type which account IDs will be SS58-encoded to Substrate addresses. Defaults to 42, for Kusama the address type is 2
         type_registry: A dict containing the custom type registry in format: {'types': {'customType': 'u32'},..}
         type_registry_preset: The name of the predefined type registry shipped with the SCALE-codec, e.g. kusama
@@ -85,7 +67,9 @@ class SubstrateInterface:
         config: dict of config flags to overwrite default configuration
         """
 
-        if (not url and not websocket) or (url and websocket):
+        if chainspec and (url or websocket):
+            raise ValueError("Either 'chainspec' or 'url'/'websocket' must be provided")
+        if not chainspec and ((not url and not websocket) or (url and websocket)):
             raise ValueError("Either 'url' or 'websocket' must be provided")
 
         # Initialize lazy loading variables
@@ -113,7 +97,9 @@ class SubstrateInterface:
 
         self.request_id = 1
         self.url = url
+        self.chainspec = chainspec
         self.websocket = None
+        self.transport = None
 
         # Websocket connection options
         self.ws_options = ws_options or {}
@@ -126,14 +112,6 @@ class SubstrateInterface:
 
         if 'write_limit' not in self.ws_options:
             self.ws_options['write_limit'] = 2 ** 32
-
-        self.__rpc_message_queue = []
-
-        if self.url and (self.url[0:6] == 'wss://' or self.url[0:5] == 'ws://'):
-            self.connect_websocket()
-
-        elif websocket:
-            self.websocket = websocket
 
         self.mock_extrinsics = None
         self.default_headers = {
@@ -162,11 +140,30 @@ class SubstrateInterface:
         if type(config) is dict:
             self.config.update(config)
 
+        if self.chainspec:
+            self.transport = SmoldotTransport(
+                chainspec=self.chainspec,
+                debug_fn=self.debug_message
+            )
+        elif websocket or (self.url and (self.url[0:6] == 'wss://' or self.url[0:5] == 'ws://')):
+            self.transport = WebsocketTransport(
+                url=self.url,
+                websocket=websocket,
+                ws_options=self.ws_options,
+                auto_reconnect=self.config.get('auto_reconnect', True),
+                debug_fn=self.debug_message,
+                on_connect=self._set_websocket
+            )
+        else:
+            self.transport = HttpTransport(
+                url=self.url,
+                headers=self.default_headers,
+                debug_fn=self.debug_message
+            )
+
 
         # Initialize extension interface
         self.extensions = ExtensionInterface(self)
-
-        self.session = requests.Session()
 
         self.reload_type_registry(use_remote_preset=use_remote_preset, auto_discover=auto_discover)
 
@@ -178,12 +175,13 @@ class SubstrateInterface:
         -------
 
         """
-        if self.url and (self.url[0:6] == 'wss://' or self.url[0:5] == 'ws://'):
-            self.debug_message("Connecting to {} ...".format(self.url))
-            self.websocket = create_connection(
-                self.url,
-                **self.ws_options
-            )
+        if isinstance(self.transport, WebsocketTransport):
+            self.transport.connect()
+        else:
+            raise ConfigurationError("Websocket transport not configured for this interface")
+
+    def _set_websocket(self, websocket):
+        self.websocket = websocket
 
     def close(self):
         """
@@ -193,9 +191,8 @@ class SubstrateInterface:
         -------
 
         """
-        if self.websocket:
-            self.debug_message("Closing websocket connection")
-            self.websocket.close()
+        if self.transport:
+            self.transport.close()
 
         self.extensions.unregister_all()
 
@@ -267,85 +264,7 @@ class SubstrateInterface:
 
         self.debug_message('RPC request #{}: "{}"'.format(request_id, method))
 
-        if self.websocket:
-            try:
-                self.websocket.send(json.dumps(payload))
-            except WebSocketConnectionClosedException:
-                if self.config.get('auto_reconnect') and self.url:
-                    # Try to reconnect websocket and retry rpc_request
-                    self.debug_message("Connection Closed; Trying to reconnecting...")
-                    self.connect_websocket()
-
-                    return self.rpc_request(method=method, params=params, result_handler=result_handler)
-                else:
-                    # websocket connection is externally created, re-raise exception
-                    raise
-
-            update_nr = 0
-            json_body = None
-            subscription_id = None
-
-            while json_body is None:
-                # Search for subscriptions
-                for message, remove_message in list_remove_iter(self.__rpc_message_queue):
-
-                    # Check if result message is matching request ID
-                    if 'id' in message and message['id'] == request_id:
-
-                        remove_message()
-
-                        # Check if response has error
-                        if 'error' in message:
-                            raise SubstrateRequestException(message['error'])
-
-                        # If result handler is set, pass result through and loop until handler return value is set
-                        if callable(result_handler):
-
-                            # Set subscription ID and only listen to messages containing this ID
-                            subscription_id = message['result']
-                            self.debug_message(f"Websocket subscription [{subscription_id}] created")
-
-                        else:
-                            json_body = message
-
-                # Process subscription updates
-                for message, remove_message in list_remove_iter(self.__rpc_message_queue):
-                    # Check if message is meant for this subscription
-                    if 'params' in message and message['params']['subscription'] == subscription_id:
-
-                        remove_message()
-
-                        self.debug_message(f"Websocket result [{subscription_id} #{update_nr}]: {message}")
-
-                        # Call result_handler with message for processing
-                        callback_result = result_handler(message, update_nr, subscription_id)
-                        if callback_result is not None:
-                            json_body = callback_result
-
-                        update_nr += 1
-
-                # Read one more message to queue
-                if json_body is None:
-                    self.__rpc_message_queue.append(json.loads(self.websocket.recv()))
-
-        else:
-
-            if result_handler:
-                raise ConfigurationError("Result handlers only available for websockets (ws://) connections")
-
-            response = self.session.request("POST", self.url, data=json.dumps(payload), headers=self.default_headers)
-
-            if response.status_code != 200:
-                raise SubstrateRequestException(
-                    "RPC request failed with HTTP status code {}".format(response.status_code))
-
-            json_body = response.json()
-
-            # Check if response has error
-            if 'error' in json_body:
-                raise SubstrateRequestException(json_body['error'])
-
-        return json_body
+        return self.transport.rpc_request(payload, result_handler=result_handler)
 
     @property
     def name(self):
