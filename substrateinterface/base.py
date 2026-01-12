@@ -57,7 +57,7 @@ class SubstrateInterface:
         Parameters
         ----------
         url: the URL to the substrate node, either in format https://127.0.0.1:9933 or wss://127.0.0.1:9944
-        chainspec: path to a Substrate chain spec file for Smoldot light client usage
+        chainspec: path or preset name string for a Substrate chain spec (Smoldot light client)
         ss58_format: The address type which account IDs will be SS58-encoded to Substrate addresses. Defaults to 42, for Kusama the address type is 2
         type_registry: A dict containing the custom type registry in format: {'types': {'customType': 'u32'},..}
         type_registry_preset: The name of the predefined type registry shipped with the SCALE-codec, e.g. kusama

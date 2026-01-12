@@ -27,6 +27,12 @@ pip install substrate-interface
 substrate = SubstrateInterface(url="ws://127.0.0.1:9944")
 ```
 
+### Smoldot light client
+
+```python
+substrate = SubstrateInterface(chainspec="polkadot") # Included chainspecs: polkadot, kusama
+```
+
 After connecting certain properties like `ss58_format` will be determined automatically by querying the RPC node. At 
 the moment this will work for most `MetadataV14` and above runtimes like Polkadot, Kusama, Acala, Moonbeam. For 
 older or runtimes under development the `ss58_format` (default 42) and other properties should be set manually. 

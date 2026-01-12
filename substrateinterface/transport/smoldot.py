@@ -1,4 +1,6 @@
 import json
+import os
+import pkgutil
 import time
 
 try:
@@ -25,8 +27,30 @@ class SmoldotTransport(TransportBase):
 
     @staticmethod
     def _load_chainspec(path):
-        with open(path, "r", encoding="utf-8") as chainspec_file:
-            return chainspec_file.read()
+        if not isinstance(path, str):
+            raise ConfigurationError("chainspec must be a path or preset name string")
+
+        if os.path.isfile(path):
+            with open(path, "r", encoding="utf-8") as chainspec_file:
+                return chainspec_file.read()
+
+        name = os.path.basename(path)
+        if name.lower().endswith(".json"):
+            name = name[:-5]
+
+        preset_name = name.lower()
+        if preset_name in ("polkadot", "kusama"):
+            resource_path = f"data/chainspecs/{preset_name}.json"
+            data = pkgutil.get_data("substrateinterface", resource_path)
+            if data is None:
+                raise ConfigurationError(
+                    f"Unable to load packaged chainspec '{preset_name}'"
+                )
+            return data.decode("utf-8")
+
+        raise ConfigurationError(
+            f"Unable to resolve chainspec '{path}' (file not found or unknown preset)"
+        )
 
     def _drain_messages(self, max_messages=10):
         responses = self.client.drain_responses(self.chain_id, max=max_messages)

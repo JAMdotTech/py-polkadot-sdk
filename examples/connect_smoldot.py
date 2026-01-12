@@ -2,10 +2,7 @@ from time import sleep
 
 from substrateinterface import SubstrateInterface
 
-chainspec_path = "../substrateinterface/data/chainspecs/polkadot.json"
-
-substrate = SubstrateInterface(chainspec=chainspec_path)
-
+substrate = SubstrateInterface(chainspec="kusama")
 
 def on_new_head(message, update_nr, subscription_id):
     print(f"New head [{subscription_id} #{update_nr}]: {message}")
