@@ -1,6 +1,6 @@
 # Python Substrate Interface Library
 #
-# Copyright 2018-2023 Stichting Polkascan (Polkascan Foundation).
+# Copyright 2018-2026 Stichting Polkascan (Polkascan Foundation).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,19 +20,18 @@ from substrateinterface.exceptions import SubstrateRequestException
 # import logging
 # logging.basicConfig(level=logging.DEBUG)
 
-substrate = SubstrateInterface(chainspec="kusama")
-# substrate = SubstrateInterface(url="wss://kusama.api.onfinality.io/public-ws")
+substrate = SubstrateInterface(chainspec="ksmcc3_asset_hub", relay_chainspecs=["ksmcc3"])
 
-keypair_alice = Keypair.create_from_uri('//Alice', ss58_format=substrate.ss58_format)
-print(f'Address: {keypair_alice.ss58_address}')
+keypair = Keypair.create_from_uri('//Alice', ss58_format=substrate.ss58_format)
 
-keypair = Keypair.create_from_uri('//Alice')
+print(f'Address: {keypair.ss58_address}')
 
 call = substrate.compose_call(
-    call_module='System',
-    call_function='remark',
+    call_module='Balances',
+    call_function='transfer_keep_alive',
     call_params={
-        'remark': '0x1234'
+        'dest': keypair.ss58_address,
+        'value': 0.0001
     }
 )
 
@@ -41,7 +40,7 @@ print(f'call: {call.data.to_hex()}')
 extrinsic = substrate.create_signed_extrinsic(
     call=call,
     keypair=keypair,
-    era={'period': 64}
+    era=None
 )
 
 try:

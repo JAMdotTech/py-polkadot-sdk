@@ -14,32 +14,56 @@ from ..exceptions import SubstrateRequestException, ConfigurationError
 
 
 class SmoldotTransport(TransportBase):
-    def __init__(self, chainspec, debug_fn=None):
+    def __init__(self, chainspec, relay_chainspecs=None, relay_chain_ids=None, debug_fn=None):
         super().__init__(debug_fn=debug_fn)
         if SmoldotClient is None:
             raise ConfigurationError(
                 "py_smoldot_light is required for Smoldot transport"
             ) from _smoldot_import_error
         self.chainspec = chainspec
+        self.relay_chainspecs = relay_chainspecs or []
+        self.relay_chain_ids = relay_chain_ids
         self.client = SmoldotClient()
-        self.chain_id = self.client.add_chain(self._load_chainspec(chainspec))
+        relay_ids = self._resolve_relay_chain_ids()
+        if relay_ids:
+            self.chain_id = self.client.add_chain(
+                self._load_chainspec(chainspec),
+                relay_chain_ids=relay_ids
+            )
+        else:
+            self.chain_id = self.client.add_chain(self._load_chainspec(chainspec))
         self.__rpc_message_queue = []
+
+    def _resolve_relay_chain_ids(self):
+        if self.relay_chain_ids:
+            return self.relay_chain_ids
+
+        relay_ids = []
+        for relay_spec in self.relay_chainspecs:
+            relay_ids.append(self.client.add_chain(self._load_chainspec(relay_spec)))
+
+        return relay_ids
 
     @staticmethod
     def _load_chainspec(path):
         if not isinstance(path, str):
             raise ConfigurationError("chainspec must be a path or preset name string")
 
-        if os.path.isfile(path):
-            with open(path, "r", encoding="utf-8") as chainspec_file:
-                return chainspec_file.read()
-
         name = os.path.basename(path)
-        if name.lower().endswith(".json"):
-            name = name[:-5]
 
-        preset_name = name.lower()
-        if preset_name in ("polkadot", "kusama"):
+        if name.lower().endswith(".json"):
+
+            if os.path.isfile(path):
+                with open(path, "r", encoding="utf-8") as chainspec_file:
+                    return chainspec_file.read()
+            else:
+                raise ConfigurationError(
+                    f"Unable to resolve chainspec '{path}'"
+                )
+        else:
+
+            preset_name = name.lower()
+
             resource_path = f"data/chainspecs/{preset_name}.json"
             data = pkgutil.get_data("substrateinterface", resource_path)
             if data is None:
@@ -47,10 +71,6 @@ class SmoldotTransport(TransportBase):
                     f"Unable to load packaged chainspec '{preset_name}'"
                 )
             return data.decode("utf-8")
-
-        raise ConfigurationError(
-            f"Unable to resolve chainspec '{path}' (file not found or unknown preset)"
-        )
 
     def _drain_messages(self, max_messages=10):
         responses = self.client.drain_responses(self.chain_id, max=max_messages)

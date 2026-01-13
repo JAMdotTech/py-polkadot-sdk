@@ -50,7 +50,8 @@ class SubstrateInterface:
 
     def __init__(self, url=None, websocket=None, ss58_format=None, type_registry=None, type_registry_preset=None,
                  cache_region=None, runtime_config=None, use_remote_preset=False, ws_options=None,
-                 auto_discover=True, auto_reconnect=True, config=None, chainspec=None):
+                 auto_discover=True, auto_reconnect=True, config=None, chainspec=None,
+                 relay_chainspecs=None, relay_chain_ids=None):
         """
         A specialized class in interfacing with a Substrate node.
 
@@ -58,6 +59,8 @@ class SubstrateInterface:
         ----------
         url: the URL to the substrate node, either in format https://127.0.0.1:9933 or wss://127.0.0.1:9944
         chainspec: path or preset name string for a Substrate chain spec (Smoldot light client)
+        relay_chainspecs: list of relay chain specs (paths or preset names) for Smoldot parachain usage
+        relay_chain_ids: list of relay chain IDs for Smoldot parachain usage
         ss58_format: The address type which account IDs will be SS58-encoded to Substrate addresses. Defaults to 42, for Kusama the address type is 2
         type_registry: A dict containing the custom type registry in format: {'types': {'customType': 'u32'},..}
         type_registry_preset: The name of the predefined type registry shipped with the SCALE-codec, e.g. kusama
@@ -71,6 +74,10 @@ class SubstrateInterface:
             raise ValueError("Either 'chainspec' or 'url'/'websocket' must be provided")
         if not chainspec and ((not url and not websocket) or (url and websocket)):
             raise ValueError("Either 'url' or 'websocket' must be provided")
+        if chainspec is None and (relay_chainspecs or relay_chain_ids):
+            raise ValueError("'relay_chainspecs' and 'relay_chain_ids' are only valid with 'chainspec'")
+        if relay_chainspecs and relay_chain_ids:
+            raise ValueError("Specify either 'relay_chainspecs' or 'relay_chain_ids', not both")
 
         # Initialize lazy loading variables
         self.__version = None
@@ -98,6 +105,8 @@ class SubstrateInterface:
         self.request_id = 1
         self.url = url
         self.chainspec = chainspec
+        self.relay_chainspecs = relay_chainspecs
+        self.relay_chain_ids = relay_chain_ids
         self.websocket = None
         self.transport = None
 
@@ -143,6 +152,8 @@ class SubstrateInterface:
         if self.chainspec:
             self.transport = SmoldotTransport(
                 chainspec=self.chainspec,
+                relay_chainspecs=self.relay_chainspecs,
+                relay_chain_ids=self.relay_chain_ids,
                 debug_fn=self.debug_message
             )
         elif websocket or (self.url and (self.url[0:6] == 'wss://' or self.url[0:5] == 'ws://')):
@@ -263,7 +274,7 @@ class SubstrateInterface:
         }
 
         self.debug_message('RPC request #{}: "{}"'.format(request_id, method))
-
+        logging.debug(payload)
         return self.transport.rpc_request(payload, result_handler=result_handler)
 
     @property
@@ -1715,6 +1726,8 @@ class SubstrateInterface:
                         'extrinsic_hash': '0x{}'.format(extrinsic.extrinsic_hash.hex()),
                         'finalized': False
                     }
+            elif message['params']['result'] in ['dropped']:
+                raise ValueError(f'Submit extrinsic failed: {message['params']['result']}')
 
         if wait_for_inclusion or wait_for_finalization:
             response = self.rpc_request(
