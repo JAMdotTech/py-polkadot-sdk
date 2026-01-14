@@ -65,10 +65,11 @@ class SmoldotTransport(TransportBase):
             preset_name = name.lower()
 
             resource_path = f"data/chainspecs/{preset_name}.json"
-            data = pkgutil.get_data("substrateinterface", resource_path)
-            if data is None:
+            try:
+                data = pkgutil.get_data("substrateinterface", resource_path)
+            except FileNotFoundError:
                 raise ConfigurationError(
-                    f"Unable to load packaged chainspec '{preset_name}'"
+                    f"Unable to resolve packaged chainspec '{preset_name}'"
                 )
             return data.decode("utf-8")
 
