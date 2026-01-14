@@ -23,14 +23,15 @@ pip install substrate-interface
 
 ## Initialization
 
+Using embedded light client
+
 ```python
-substrate = SubstrateInterface(url="ws://127.0.0.1:9944")
+substrate = SubstrateInterface(chainspec="polkadot_asset_hub", relay_chainspecs=["polkadot"])
 ```
 
-### Smoldot light client
-
+Using node RPC endpoint 
 ```python
-substrate = SubstrateInterface(chainspec="polkadot") # Included chainspecs: polkadot, kusama
+substrate = SubstrateInterface(url="ws://127.0.0.1:9944")
 ```
 
 After connecting certain properties like `ss58_format` will be determined automatically by querying the RPC node. At 

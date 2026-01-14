@@ -4,7 +4,7 @@ import pkgutil
 import time
 
 try:
-    from py_smoldot_light import SmoldotClient
+    from smoldot_light import SmoldotClient
 except ImportError as exc:
     SmoldotClient = None
     _smoldot_import_error = exc

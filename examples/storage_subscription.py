@@ -25,12 +25,6 @@ substrate = SubstrateInterface(chainspec="ksmcc3")
 # Accounts to track
 storage_keys = [
     substrate.create_storage_key(
-        "System", "Account", ["5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"]
-    ),
-    substrate.create_storage_key(
-        "System", "Account", ["5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty"]
-    ),
-    substrate.create_storage_key(
         "System", "Events"
     ),
 ]

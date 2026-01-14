@@ -191,7 +191,8 @@ setup(
         'scalecodec>=1.2.10,<1.3',
         'py-sr25519-bindings>=0.2.0,<1',
         'py-ed25519-zebra-bindings>=1.0,<2',
-        'py-bip39-bindings>=0.1.9,<1'
+        'py-bip39-bindings>=0.1.9,<1',
+        'smoldot-light>=0.1.0,<1'
     ],
 
     # List additional groups of dependencies here (e.g. development
