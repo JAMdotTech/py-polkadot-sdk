@@ -1727,7 +1727,7 @@ class SubstrateInterface:
                         'finalized': False
                     }
             elif message['params']['result'] in ['dropped']:
-                raise ValueError(f'Submit extrinsic failed: {message['params']['result']}')
+                raise ValueError(f"Submit extrinsic failed: {message['params']['result']}")
 
         if wait_for_inclusion or wait_for_finalization:
             response = self.rpc_request(
