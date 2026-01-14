@@ -20,16 +20,10 @@ def subscription_handler(storage_key, updated_obj, update_nr, subscription_id):
     print(f"Update for {storage_key}: {updated_obj.value}")
 
 
-substrate = SubstrateInterface(url="ws://127.0.0.1:9944")
+substrate = SubstrateInterface(chainspec="ksmcc3")
 
 # Accounts to track
 storage_keys = [
-    substrate.create_storage_key(
-        "System", "Account", ["5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"]
-    ),
-    substrate.create_storage_key(
-        "System", "Account", ["5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty"]
-    ),
     substrate.create_storage_key(
         "System", "Events"
     ),

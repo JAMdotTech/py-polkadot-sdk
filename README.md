@@ -23,6 +23,13 @@ pip install substrate-interface
 
 ## Initialization
 
+Using embedded light client
+
+```python
+substrate = SubstrateInterface(chainspec="polkadot_asset_hub", relay_chainspecs=["polkadot"])
+```
+
+Using node RPC endpoint 
 ```python
 substrate = SubstrateInterface(url="ws://127.0.0.1:9944")
 ```

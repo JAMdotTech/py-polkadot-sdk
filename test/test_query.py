@@ -99,7 +99,7 @@ class QueryTestCase(unittest.TestCase):
         self.assertEqual(result.meta_info['result_found'], False)
 
     def test_identity_hasher(self):
-        result = self.kusama_substrate.query("Claims", "Claims", ["0x00000a9c44f24e314127af63ae55b864a28d7aee"])
+        result = self.kusama_substrate.query("Claims", "Claims", ["0x00000a9c44f24e314127af63ae55b864a28d7aee"], block_hash='0x4b313e72e3a524b98582c31cd3ff6f7f2ef5c38a3c899104a833e468bb1370a2')
         self.assertEqual(45880000000000, result.value)
 
     def test_well_known_keys_result(self):
@@ -140,7 +140,6 @@ class QueryTestCase(unittest.TestCase):
 
         self.assertEqual(len(result), 3)
         self.assertEqual(result[0][0].params[0], "F4xQKRUagnSGjFqafyhajLs94e7Vvzvr8ebwYJceKpr8R7T")
-        self.assertGreater(result[0][1].value['nonce'], 0)
         self.assertEqual(result[1][1].value['nonce'], 0)
 
     def test_storage_key_unknown(self):

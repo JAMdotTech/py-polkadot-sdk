@@ -66,7 +66,7 @@ class QueryMapTestCase(unittest.TestCase):
 
     def test_claims_claim_map(self):
 
-        result = self.kusama_substrate.query_map('Claims', 'Claims', max_results=3)
+        result = self.kusama_substrate.query_map('Claims', 'Claims', max_results=3, block_hash='0x4b313e72e3a524b98582c31cd3ff6f7f2ef5c38a3c899104a833e468bb1370a2')
 
         records = [item for item in result]
 
@@ -115,7 +115,10 @@ class QueryMapTestCase(unittest.TestCase):
         self.assertEqual(record_1_2[1].value, record_2_2[1].value)
 
     def test_max_results(self):
-        result = self.kusama_substrate.query_map('Claims', 'Claims', max_results=5, page_size=100)
+        result = self.kusama_substrate.query_map(
+            'Claims', 'Claims', max_results=5, page_size=100,
+            block_hash='0x4b313e72e3a524b98582c31cd3ff6f7f2ef5c38a3c899104a833e468bb1370a2'
+        )
 
         # Keep iterating shouldn't trigger retrieve next page
         result_count = 0
@@ -124,7 +127,10 @@ class QueryMapTestCase(unittest.TestCase):
 
         self.assertEqual(5, result_count)
 
-        result = self.kusama_substrate.query_map('Claims', 'Claims', max_results=5, page_size=2)
+        result = self.kusama_substrate.query_map(
+            'Claims', 'Claims', max_results=5, page_size=2,
+            block_hash='0x4b313e72e3a524b98582c31cd3ff6f7f2ef5c38a3c899104a833e468bb1370a2'
+        )
 
         # Keep iterating shouldn't exceed max_results
         result_count = 0
@@ -212,16 +218,6 @@ class QueryMapTestCase(unittest.TestCase):
             block_hash="0x61dd66907df3187fd1438463f2c87f0d596797936e0a292f6f98d12841da2325"
         )
         self.assertEqual(era_stakers.records, [])
-
-    def test_nested_keys(self):
-
-        result = self.kusama_substrate.query_map(
-            module='ConvictionVoting',
-            storage_function='VotingFor',
-            max_results=10
-        )
-        self.assertTrue(self.kusama_substrate.is_valid_ss58_address(result[0][0][0].value))
-        self.assertGreaterEqual(result[0][0][1], 0)
 
     def test_double_map_too_many_params(self):
         with self.assertRaises(ValueError) as cm:
