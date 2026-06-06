@@ -50,7 +50,7 @@ class SubstrateInterface:
 
     def __init__(self, url=None, websocket=None, ss58_format=None, type_registry=None, type_registry_preset=None,
                  cache_region=None, runtime_config=None, use_remote_preset=False, ws_options=None,
-                 auto_discover=True, auto_reconnect=True, config=None, chainspec=None,
+                 auto_discover=True, auto_reconnect=True, config=None, chainspec=None, http_request_timeout=None,
                  relay_chainspecs=None, relay_chain_ids=None):
         """
         A specialized class in interfacing with a Substrate node.
@@ -67,6 +67,7 @@ class SubstrateInterface:
         cache_region: a Dogpile cache region as a central store for the metadata cache
         use_remote_preset: When True preset is downloaded from GitHub master, otherwise use files from local installed scalecodec package
         ws_options: dict of options to pass to the websocket-client create_connection function
+        http_request_timeout: timeout in seconds for HTTP RPC requests; can also be a (connect, read) timeout tuple
         config: dict of config flags to overwrite default configuration
         """
 
@@ -107,6 +108,7 @@ class SubstrateInterface:
         self.chainspec = chainspec
         self.relay_chainspecs = relay_chainspecs
         self.relay_chain_ids = relay_chain_ids
+        self.http_request_timeout = http_request_timeout
         self.websocket = None
         self.transport = None
 
@@ -169,6 +171,7 @@ class SubstrateInterface:
             self.transport = HttpTransport(
                 url=self.url,
                 headers=self.default_headers,
+                request_timeout=self.http_request_timeout,
                 debug_fn=self.debug_message
             )
 
