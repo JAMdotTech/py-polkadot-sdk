@@ -274,7 +274,7 @@ class SubstrateInterface:
         }
 
         self.debug_message('RPC request #{}: "{}"'.format(request_id, method))
-        logging.debug(payload)
+        self.debug_message(payload)
         return self.transport.rpc_request(payload, result_handler=result_handler)
 
     @property
