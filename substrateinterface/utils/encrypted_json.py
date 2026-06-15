@@ -18,19 +18,39 @@ SALT_LENGTH = 32
 SEC_LENGTH = 64
 SEED_LENGTH = 32
 
+# Keep legacy scrypt defaults for backward compatibility
 SCRYPT_N = 1 << 15
 SCRYPT_P = 1
 SCRYPT_R = 8
 
+SCRYPT_DECODE_MAXMEM_DEFAULT = 2 ** 28
+SCRYPT_ENCODE_MAXMEM_DEFAULT = 2 ** 26
 
-def decode_pair_from_encrypted_json(json_data: Union[str, dict], passphrase: str) -> tuple:
+# Allowed scrypt parameter presets used by @polkadot/keyring
+ALLOWED_SCRYPT_PARAMS = {
+    (1 << 13, 10, 8),
+    (1 << 14, 5, 8),
+    (1 << 15, 3, 8),
+    (1 << 15, 1, 8),
+    (1 << 16, 2, 8),
+    (1 << 17, 1, 8),
+}
+
+
+def decode_pair_from_encrypted_json(
+    json_data: Union[str, dict], 
+    passphrase: str,
+    *,
+    maxmem: int = SCRYPT_DECODE_MAXMEM_DEFAULT,
+) -> tuple:
     """
     Decodes encrypted PKCS#8 message from PolkadotJS JSON format
 
     Parameters
     ----------
-    json_data
-    passphrase
+    json_data: encrypted PolkadotJS account JSON
+    passphrase: passphrase used to decrypt the account
+    maxmem: maximum memory in bytes allowed for scrypt key derivation
 
     Returns
     -------
@@ -51,7 +71,17 @@ def decode_pair_from_encrypted_json(json_data: Union[str, dict], passphrase: str
         p = int.from_bytes(encrypted[36:40], byteorder='little')
         r = int.from_bytes(encrypted[40:44], byteorder='little')
 
-        password = scrypt(passphrase.encode(), salt, n=n, r=r, p=p, dklen=32, maxmem=2 ** 26)
+        validate_scrypt_params(n, p, r)
+
+        password = scrypt(
+            passphrase.encode(), 
+            salt, 
+            n=n, 
+            r=r, 
+            p=p, 
+            dklen=32, 
+            maxmem=maxmem,
+        )
         encrypted = encrypted[SCRYPT_LENGTH:]
 
     else:
@@ -76,6 +106,13 @@ def decode_pair_from_encrypted_json(json_data: Union[str, dict], passphrase: str
         assert(public_key == converted_public_key)
 
     return secret_key, public_key
+
+
+def validate_scrypt_params(n: int, p: int, r: int) -> None:
+    if (n, p, r) not in ALLOWED_SCRYPT_PARAMS:
+        raise ValueError(
+            f"Unsupported scrypt parameters in encrypted JSON: N={n}, p={p}, r={r}"
+        )
 
 
 def decode_pkcs8(ciphertext: bytes) -> tuple:
@@ -106,7 +143,16 @@ def encode_pkcs8(public_key: bytes, private_key: bytes) -> bytes:
     return PKCS8_HEADER + private_key + PKCS8_DIVIDER + public_key
 
 
-def encode_pair(public_key: bytes, private_key: bytes, passphrase: str) -> bytes:
+def encode_pair(
+    public_key: bytes, 
+    private_key: bytes, 
+    passphrase: str,
+    *,
+    scrypt_n: int = SCRYPT_N,
+    scrypt_r: int = SCRYPT_R,
+    scrypt_p: int = SCRYPT_P,
+    maxmem: int = SCRYPT_ENCODE_MAXMEM_DEFAULT,
+) -> bytes:
     """
     Encode a public/private pair to PKCS#8 format, encrypted with provided passphrase
 
@@ -115,20 +161,33 @@ def encode_pair(public_key: bytes, private_key: bytes, passphrase: str) -> bytes
     public_key: 32 bytes public key
     private_key: 64 bytes private key
     passphrase: passphrase to encrypt the PKCS#8 message
+    scrypt_n: scrypt cost parameter
+    scrypt_r: scrypt block size parameter
+    scrypt_p: scrypt parallelization parameter
+    maxmem: maximum memory in bytes allowed for scrypt key derivation
 
     Returns
     -------
     (Encrypted) PKCS#8 message bytes
     """
+    validate_scrypt_params(scrypt_n, scrypt_p, scrypt_r)
+    
     message = encode_pkcs8(public_key, private_key)
 
     salt = urandom(SALT_LENGTH)
-    password = scrypt(passphrase.encode(), salt, n=SCRYPT_N, r=SCRYPT_R, p=SCRYPT_P, dklen=32, maxmem=2 ** 26)
+    password = scrypt(
+        passphrase.encode(), 
+        salt, 
+        n=scrypt_n, 
+        r=scrypt_r, 
+        p=scrypt_p, 
+        dklen=32, 
+        maxmem=maxmem,
+    )
 
     secret_box = SecretBox(key=password)
     message = secret_box.encrypt(message)
 
-    scrypt_params = SCRYPT_N.to_bytes(4, 'little') + SCRYPT_P.to_bytes(4, 'little') + SCRYPT_R.to_bytes(4, 'little')
+    scrypt_params = scrypt_n.to_bytes(4, 'little') + scrypt_p.to_bytes(4, 'little') + scrypt_r.to_bytes(4, 'little')
 
     return salt + scrypt_params + message.nonce + message.ciphertext
-
