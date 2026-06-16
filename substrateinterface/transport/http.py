@@ -7,9 +7,10 @@ from ..exceptions import SubstrateRequestException, ConfigurationError
 
 
 class HttpTransport(TransportBase):
-    def __init__(self, url, headers=None, debug_fn=None):
+    def __init__(self, url, headers=None, debug_fn=None, request_timeout=None):
         super().__init__(debug_fn=debug_fn)
         self.url = url
+        self.request_timeout = request_timeout
         self.headers = headers or {
             'content-type': "application/json",
             'cache-control': "no-cache"
@@ -20,7 +21,8 @@ class HttpTransport(TransportBase):
         if result_handler:
             raise ConfigurationError("Result handlers only available for websockets (ws://) connections")
 
-        response = self.session.request("POST", self.url, data=json.dumps(payload), headers=self.headers)
+        response = self.session.request("POST", self.url, data=json.dumps(payload), headers=self.headers,
+                                        timeout=self.request_timeout)
 
         if response.status_code != 200:
             raise SubstrateRequestException(
