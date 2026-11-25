@@ -20,6 +20,7 @@ from substrateinterface import SubstrateInterface
 from test import settings
 
 
+@settings.requires_live_node
 class SubscriptionsTestCase(unittest.TestCase):
 
     @classmethod

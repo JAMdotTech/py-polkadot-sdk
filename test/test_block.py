@@ -168,14 +168,6 @@ class BlockTestCase(unittest.TestCase):
         cls.substrate.rpc_request = MagicMock(side_effect=mocked_request)
         cls.substrate.query = MagicMock(side_effect=mocked_query)
 
-        cls.babe_substrate = SubstrateInterface(
-            url=settings.BABE_NODE_URL
-        )
-
-        cls.aura_substrate = SubstrateInterface(
-            url=settings.AURA_NODE_URL
-        )
-
     def test_get_valid_extrinsics(self):
 
         block = self.substrate.get_block(
@@ -288,14 +280,18 @@ class BlockTestCase(unittest.TestCase):
                           finalized_only=True
                           )
 
+    @settings.requires_live_node
     def test_block_author_babe(self):
-        block = self.babe_substrate.get_block(include_author=True)
+        with SubstrateInterface(url=settings.BABE_NODE_URL) as substrate:
+            block = substrate.get_block(include_author=True)
 
         self.assertIn('author', block)
         self.assertIsNotNone(block['author'])
 
+    @settings.requires_live_node
     def test_block_author_aura(self):
-        block = self.aura_substrate.get_block(include_author=True)
+        with SubstrateInterface(url=settings.AURA_NODE_URL) as substrate:
+            block = substrate.get_block(include_author=True)
 
         self.assertIn('author', block)
         self.assertIsNotNone(block['author'])

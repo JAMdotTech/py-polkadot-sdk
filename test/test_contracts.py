@@ -18,16 +18,17 @@ import os
 import unittest
 
 from scalecodec import ScaleBytes
-from substrateinterface import SubstrateInterface, ContractMetadata, ContractInstance, Keypair, ContractEvent
+from scalecodec.type_registry import load_type_registry_preset
+from substrateinterface import ContractMetadata, ContractInstance, Keypair, ContractEvent
 from substrateinterface.exceptions import ContractMetadataParseException
-from test import settings
+from test.fixtures import RuntimeFixture
 
 
 class ContractMetadataTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.substrate = SubstrateInterface(url=settings.KUSAMA_NODE_URL)
+        cls.substrate = RuntimeFixture(metadata_version='kusama_test', ss58_format=2)
 
     def setUp(self) -> None:
         self.contract_metadata = ContractMetadata.create_from_file(
@@ -288,7 +289,7 @@ class FlipperMetadataV3TestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.substrate = SubstrateInterface(url=settings.KUSAMA_NODE_URL)
+        cls.substrate = RuntimeFixture()
 
     def setUp(self) -> None:
         self.contract_metadata = ContractMetadata.create_from_file(
@@ -348,36 +349,18 @@ class FlipperMetadataV3TestCase(unittest.TestCase):
 
 
 class FlipperInstanceTestCase(unittest.TestCase):
+    call_result = '0x7ee58accd6100100070000c0ce020200100001000000000000000000000000000000000000000000000400'
+    pallet_version = '0x0900'
 
     @classmethod
     def setUpClass(cls):
-
-        class MockedSubstrateInterface(SubstrateInterface):
-
-            def rpc_request(self, method, params, result_handler=None):
-                if method == 'state_call':
-                    return {
-                        'jsonrpc': '2.0',
-                        'result': '0x7ee58accd6100100070000c0ce020200100001000000000000000000000000000000000000000000000400',
-                        'id': 10
-                    }
-                if method == 'contracts_call':
-                    return {
-                        'jsonrpc': '2.0',
-                        'result': {
-                            'gasConsumed': 7419127834,
-                            'gasRequired': 74999922688,
-                            'storageDeposit': {'charge': '0x0'},
-                            'debugMessage': '',
-                            'result': {'Ok': {'flags': 0, 'data': '0x00'}}
-                        },
-                        'id': self.request_id}
-
-                return super().rpc_request(method, params, result_handler)
-
-        cls.substrate = MockedSubstrateInterface(url=settings.KUSAMA_NODE_URL, type_registry_preset='canvas')
-        # cls.substrate = SubstrateInterface(url='ws://127.0.0.1:9944')
-
+        # The recorded ContractsApi results use Weight V2, introduced after the metadata fixture.
+        weight_type = load_type_registry_preset('legacy')['types']['WeightV2']
+        cls.substrate = RuntimeFixture(
+            type_registry_preset='canvas',
+            type_registry={'types': {'sp_weights::weight_v2::Weight': weight_type}},
+            rpc_results={'state_call': cls.call_result, 'state_getStorage': cls.pallet_version},
+        )
         cls.keypair = Keypair.create_from_uri('//Alice')
 
     def setUp(self) -> None:
@@ -410,38 +393,8 @@ class FlipperInstanceV4TestCase(FlipperInstanceTestCase):
 
 
 class FlipperInstanceV5TestCase(FlipperInstanceTestCase):
-
-    @classmethod
-    def setUpClass(cls):
-
-        class MockedSubstrateInterface(SubstrateInterface):
-
-            def rpc_request(self, method, params, result_handler=None):
-                if method == 'state_call':
-                    return {
-                        'jsonrpc': '2.0',
-                         'result': '0x1a987a663dbd8e5cf16786bc0100010000000000000000000000000000000000000000000008000000',
-                         'id': 16
-                    }
-                if method == 'contracts_call':
-                    return {
-                        'jsonrpc': '2.0',
-                        'result': {
-                            'gasConsumed': 7419127834,
-                            'gasRequired': 74999922688,
-                            'storageDeposit': {'charge': '0x0'},
-                            'debugMessage': '',
-                            'result': {'Ok': {'flags': 0, 'data': '0x0000'}}
-                        },
-                        'id': self.request_id}
-
-                return super().rpc_request(method, params, result_handler)
-
-        cls.substrate = MockedSubstrateInterface(
-            url=settings.KUSAMA_NODE_URL, type_registry_preset='canvas', type_registry={'types': {"ContractExecResult": "ContractExecResultTo269"}}
-        )
-
-        cls.keypair = Keypair.create_from_uri('//Alice')
+    call_result = '0x1a987a663dbd8e5cf16786bc0100010000000000000000000000000000000000000000000008000000'
+    pallet_version = '0x0a00'
 
     def setUp(self) -> None:
         self.contract = ContractInstance.create_from_address(

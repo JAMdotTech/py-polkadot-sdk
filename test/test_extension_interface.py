@@ -25,6 +25,15 @@ from test import settings
 
 
 class ExtensionsTestCase(unittest.TestCase):
+    def test_unsupported_extension_call(self):
+        with SubstrateInterface(url='http://runtime.invalid', auto_discover=False) as substrate:
+            substrate.register_extension(SubstrateNodeExtension(max_block_range=100))
+            with self.assertRaises(ExtensionCallNotFound):
+                substrate.extensions.unknown()
+
+
+@settings.requires_live_node
+class LiveExtensionsTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -44,10 +53,6 @@ class ExtensionsTestCase(unittest.TestCase):
     def test_search_block_timestamp(self):
         block_timestamp = self.substrate.extensions.get_block_timestamp(1000)
         self.assertEqual(1590513426, block_timestamp)
-
-    def test_unsupported_extension_call(self):
-        with self.assertRaises(ExtensionCallNotFound):
-            self.substrate.extensions.unknown()
 
 
 if __name__ == '__main__':

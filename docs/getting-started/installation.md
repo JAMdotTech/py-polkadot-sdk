@@ -1,6 +1,15 @@
 ## Install using PyPI
+
+Requires CPython 3.11 or newer. The test matrix covers 3.11 through 3.15.
+
 ```bash
-pip install substrate-interface
+python -m pip install substrate-interface
+```
+
+Python 3.15 may need to build native dependencies from source. Install the Rust toolchain and enable PyO3's stable ABI when no compatible wheels are available.
+
+```bash
+PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 python -m pip install substrate-interface
 ```
 
 ## Initialization

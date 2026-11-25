@@ -1,6 +1,6 @@
 # Python Substrate Interface
 
-[![Build Status](https://img.shields.io/github/actions/workflow/status/polkascan/py-substrate-interface/unittests.yml?branch=master)](https://github.com/JAMdotTech/py-polkadot-sdk/actions?query=workflow%3A%22Run+unit+tests%22)
+[![Build Status](https://github.com/JAMdotTech/py-polkadot-sdk/actions/workflows/unittests.yml/badge.svg?branch=master)](https://github.com/JAMdotTech/py-polkadot-sdk/actions/workflows/unittests.yml)
 [![Latest Version](https://img.shields.io/pypi/v/substrate-interface.svg)](https://pypi.org/project/substrate-interface/)
 [![Supported Python versions](https://img.shields.io/pypi/pyversions/substrate-interface.svg)](https://pypi.org/project/substrate-interface/)
 [![License](https://img.shields.io/pypi/l/substrate-interface.svg)](https://github.com/JAMdotTech/py-polkadot-sdk/blob/master/LICENSE)
@@ -17,8 +17,17 @@ the Substrate runtime.
 * [Metadata documentation for Polkadot and Kusama ecosystem runtimes](https://jamdottech.github.io/py-polkadot-metadata-docs/)
 
 ## Installation
+
+Requires CPython 3.11 or newer. The test matrix covers 3.11 through 3.15.
+
 ```bash
-pip install substrate-interface
+python -m pip install substrate-interface
+```
+
+Python 3.15 may need to build native dependencies from source. Install the Rust toolchain and enable PyO3's stable ABI when no compatible wheels are available.
+
+```bash
+PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 python -m pip install substrate-interface
 ```
 
 ## Initialization
@@ -64,6 +73,10 @@ receipt = substrate.submit_extrinsic(extrinsic, wait_for_inclusion=True)
 
 print(f"Extrinsic '{receipt.extrinsic_hash}' sent and included in block '{receipt.block_hash}'")
 ```
+
+## Running tests
+
+Install the test dependencies with `python -m pip install -e '.[test]'` and run `python -m pytest`. To include tests that need live RPC endpoints, run `RUN_LIVE_TESTS=1 python -m pytest`. The endpoint overrides are listed in `test/settings.py`.
 
 ## Contact and Support 
 

@@ -14,11 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from os import environ
+from unittest import skipUnless
+
+requires_live_node = skipUnless(environ.get('RUN_LIVE_TESTS') == '1', 'set RUN_LIVE_TESTS=1 to use live nodes')
 
 KUSAMA_NODE_URL = environ.get('SUBSTRATE_NODE_URL_KUSAMA') or 'wss://kusama-rpc.polkadot.io/'
 POLKADOT_NODE_URL = environ.get('SUBSTRATE_NODE_URL_POLKADOT') or 'wss://rpc.polkadot.io/'
 ROCOCO_NODE_URL = environ.get('SUBSTRATE_NODE_URL_ROCOCO') or 'wss://rococo-rpc.polkadot.io'
-MOONBEAM_NODE_URL = environ.get('SUBSTRATE_NODE_URL_ROCOCO') or 'wss://wss.api.moonbeam.network'
 
 BABE_NODE_URL = environ.get('SUBSTRATE_BABE_NODE_URL') or POLKADOT_NODE_URL
 AURA_NODE_URL = environ.get('SUBSTRATE_AURA_NODE_URL') or 'wss://acala-rpc-1.aca-api.network'

@@ -21,29 +21,29 @@ https://packaging.python.org/guides/distributing-packages-using-setuptools/
 https://github.com/pypa/sampleproject
 """
 
-# Always prefer setuptools over distutils
-from setuptools import setup, find_packages
-from os import path, environ
-# io.open is needed for projects that support Python 2.7
-# It ensures open() defaults to text mode with universal newlines,
-# and accepts an argument to specify the text encoding
-# Python 3 only projects can skip this import
-from io import open
+from email.parser import Parser
+from os import environ, path
+
+from setuptools import find_packages, setup
+
+here = path.abspath(path.dirname(__file__))
+sdist_metadata = path.join(here, 'PKG-INFO')
 
 if environ.get('TRAVIS_TAG'):
     version = environ['TRAVIS_TAG'].replace('v', '')
 elif environ.get('CI_COMMIT_TAG'):
     version = environ['CI_COMMIT_TAG'].replace('v', '')
-elif environ.get('GITHUB_REF'):
-
-    if not environ['GITHUB_REF'].startswith('refs/tags/v'):
-        raise ValueError('Incorrect tag format {}'.format(environ['GITHUB_REF']))
-
-    version = environ['GITHUB_REF'].replace('refs/tags/v', '')
+elif environ.get('GITHUB_REF', '').startswith('refs/tags/'):
+    tag_ref = environ['GITHUB_REF']
+    if not tag_ref.startswith('refs/tags/v'):
+        raise ValueError('Incorrect tag format {}'.format(tag_ref))
+    version = tag_ref[len('refs/tags/v'):]
+elif path.isfile(sdist_metadata):
+    # Preserve the release version when rebuilding from a source distribution.
+    with open(sdist_metadata, encoding='utf-8') as f:
+        version = Parser().parse(f, headersonly=True)['Version']
 else:
-    raise ValueError('Missing commit tag, can\'t set version')
-
-here = path.abspath(path.dirname(__file__))
+    version = '0.0.0.dev0'
 
 # Get the long description from the README file
 with open(path.join(here, 'README.md'), encoding='utf-8') as f:
@@ -105,7 +105,7 @@ setup(
     #
     # This field corresponds to the "Home-Page" metadata field:
     # https://packaging.python.org/specifications/core-metadata/#home-page-optional
-    url='https://github.com/polkascan/py-substrate-interface',  # Optional
+    url='https://github.com/JAMdotTech/py-polkadot-sdk',  # Optional
 
     # This should be your name or the name of the organization which owns the
     # project.
@@ -136,11 +136,11 @@ setup(
         # These classifiers are *not* checked by 'pip install'. See instead
         # 'python_requires' below.
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
-        'Programming Language :: Python :: 3.9',
-        'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
+        'Programming Language :: Python :: 3.13',
+        'Programming Language :: Python :: 3.14',
+        'Programming Language :: Python :: 3.15',
     ],
 
     # This field adds keywords for your project which will appear on the
@@ -168,7 +168,7 @@ setup(
     # https://packaging.python.org/guides/distributing-packages-using-setuptools/#python-requires
 
     #python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, <4',
-    python_requires='>=3.7, <4',
+    python_requires='>=3.11, <4',
 
     # This field lists other packages that your project depends on to run.
     # Any package you put here will be installed by pip when your project is
