@@ -15,19 +15,24 @@
 # limitations under the License.
 
 import unittest
+from unittest.mock import Mock
 
 from scalecodec import ScaleBytes
 from scalecodec.exceptions import RemainingScaleBytesNotEmptyException
 from substrateinterface import SubstrateInterface
-from test import settings
+from test.fixtures import RuntimeFixture
 
 
 class TestInit(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.kusama_substrate = SubstrateInterface(url=settings.KUSAMA_NODE_URL)
-        cls.polkadot_substrate = SubstrateInterface(url=settings.POLKADOT_NODE_URL)
+        cls.kusama_substrate = RuntimeFixture()
+        cls.polkadot_substrate = RuntimeFixture(
+            chain='Polkadot',
+            properties={'ss58Format': 0, 'tokenDecimals': 10, 'tokenSymbol': 'DOT'},
+            rpc_results={'chain_getHeader': None},
+        )
 
     def test_chain(self):
         self.assertEqual('Kusama', self.kusama_substrate.chain)
@@ -54,21 +59,21 @@ class TestInit(unittest.TestCase):
         self.assertEqual(10, self.polkadot_substrate.token_decimals)
 
     def test_override_ss58_format_init(self):
-        substrate = SubstrateInterface(url=settings.KUSAMA_NODE_URL, ss58_format=99)
+        substrate = RuntimeFixture(ss58_format=99)
         self.assertEqual(99, substrate.ss58_format)
 
     def test_override_incorrect_ss58_format(self):
-        substrate = SubstrateInterface(url=settings.KUSAMA_NODE_URL)
+        substrate = RuntimeFixture()
         with self.assertRaises(TypeError):
             substrate.ss58_format = 'test'
 
     def test_override_token_symbol(self):
-        substrate = SubstrateInterface(url=settings.KUSAMA_NODE_URL)
+        substrate = RuntimeFixture()
         substrate.token_symbol = 'TST'
         self.assertEqual('TST', substrate.token_symbol)
 
     def test_override_incorrect_token_decimals(self):
-        substrate = SubstrateInterface(url=settings.KUSAMA_NODE_URL)
+        substrate = RuntimeFixture()
         with self.assertRaises(TypeError):
             substrate.token_decimals = 'test'
 
@@ -95,7 +100,13 @@ class TestInit(unittest.TestCase):
         self.assertIsNone(block_number2)
 
     def test_context_manager(self):
-        with SubstrateInterface(url=settings.KUSAMA_NODE_URL) as substrate:
+        websocket = Mock(connected=True)
+
+        def close():
+            websocket.connected = False
+
+        websocket.close.side_effect = close
+        with SubstrateInterface(websocket=websocket, ss58_format=2, auto_discover=False) as substrate:
             self.assertTrue(substrate.websocket.connected)
             self.assertEqual(2, substrate.ss58_format)
 
@@ -106,7 +117,7 @@ class TestInit(unittest.TestCase):
         with self.assertRaises(RemainingScaleBytesNotEmptyException):
             self.kusama_substrate.decode_scale('u8', ScaleBytes('0x0101'))
 
-        with SubstrateInterface(url=settings.KUSAMA_NODE_URL, config={'strict_scale_decode': False}) as substrate:
+        with RuntimeFixture(config={'strict_scale_decode': False}) as substrate:
             result = substrate.decode_scale('u8', ScaleBytes('0x0101'))
             self.assertEqual(result, 1)
 

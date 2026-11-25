@@ -15,7 +15,7 @@
 # limitations under the License.
 
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import Mock
 
 from scalecodec.types import GenericAccountId
 
@@ -23,67 +23,90 @@ from substrateinterface.exceptions import SubstrateRequestException
 
 from substrateinterface import SubstrateInterface
 from test import settings
+from test.fixtures import RuntimeFixture
+
+
+CLAIM_ADDRESSES = (
+    '0x00000a9c44f24e314127af63ae55b864a28d7aee',
+    '0x00002f21194993a750972574e2d82ce8c95078a6',
+    '0x0000a940f973ccf435ae9c040c253e1c043c5fb2',
+    '0x00010b75619f666c3f172f0d1c7fa86d02adcf9c',
+    '0x0002000000000000000000000000000000000000',
+)
+STAKER_ADDRESSES = (
+    'JCghFN7mD4ETKzMbvSVmMMPwWutJGk6Bm1yKWk8Z9KhPGeZ',
+    'CmNv7yFV13CMM6r9dJYgdi4UTJK7tzFEF17gmK9c3mTc2PG',
+    'DfishveZoxSRNRb8FtyS7ignbw6cr32eCY2w6ctLDRM1NQz',
+    'HmsTAS1bCtZc9FSq9nqJzZCEkhhSygtXj9TDxNgEWTHnpyQ',
+)
 
 
 class QueryMapTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        cls.kusama_substrate = RuntimeFixture(metadata_version='kusama_test', ss58_format=2)
+        substrate = cls.kusama_substrate
 
-        cls.kusama_substrate = SubstrateInterface(
-            url=settings.KUSAMA_NODE_URL,
-            ss58_format=2,
-            type_registry_preset='kusama'
-        )
+        def storage_key(pallet, name, *params):
+            return substrate.create_storage_key(pallet, name, list(params)).to_hex()
 
-        orig_rpc_request = cls.kusama_substrate.rpc_request
+        claims = {
+            storage_key('Claims', 'Claims', address): '0x' + (45880000000000 + i).to_bytes(16, 'little').hex()
+            for i, address in enumerate(CLAIM_ADDRESSES)
+        }
+        account_type = substrate.get_metadata_storage_function('System', 'Account').get_value_type_string()
+        accounts = {
+            storage_key('System', 'Account', '0x' + f'{i:02x}' * 32): str(substrate.encode_scale(account_type, {
+                'nonce': i,
+                'refcount': 0,
+                'data': {'free': 100, 'reserved': 0, 'misc_frozen': 0, 'fee_frozen': 0},
+            }))
+            for i in (1, 2)
+        }
+        exposure_type = substrate.get_metadata_storage_function('Staking', 'ErasStakers').get_value_type_string()
+        exposure = str(substrate.encode_scale(exposure_type, {'total': 1, 'own': 1, 'others': []}))
+        stakers = {storage_key('Staking', 'ErasStakers', 2185, address): exposure for address in STAKER_ADDRESSES}
+        cls.storage_at = {
+            substrate.block_head: {**claims, **stakers},
+            substrate.parent_hash: {**dict(list(claims.items())[:4]), **accounts},
+        }
 
-        def mocked_request(method, params):
-            if method == 'state_getKeysPaged':
-                if params[3] == '0x2e8047826d028f5cc092f5e694860efbd4f74ee1535424cdf3626a175867db62':
+    def setUp(self):
+        def get_keys_paged(params):
+            prefix, page_size, start_key, block_hash = params
+            if page_size > 1000:
+                raise SubstrateRequestException('Maximum page size is 1000')
 
-                    if params[2] == params[0]:
-                        return {
-                            'jsonrpc': '2.0',
-                            'result': [
-                                '0x9c5d795d0297be56027a4b2464e333979c5d795d0297be56027a4b2464e3339700000a9c44f24e314127af63ae55b864a28d7aee',
-                                '0x9c5d795d0297be56027a4b2464e333979c5d795d0297be56027a4b2464e3339700002f21194993a750972574e2d82ce8c95078a6',
-                                '0x9c5d795d0297be56027a4b2464e333979c5d795d0297be56027a4b2464e333970000a940f973ccf435ae9c040c253e1c043c5fb2',
-                                '0x9c5d795d0297be56027a4b2464e333979c5d795d0297be56027a4b2464e3339700010b75619f666c3f172f0d1c7fa86d02adcf9c'
-                            ],
-                            'id': 8
-                        }
-                    else:
-                        return {
-                            'jsonrpc': '2.0',
-                            'result': [
-                            ],
-                            'id': 8
-                        }
-            return orig_rpc_request(method, params)
+            keys = sorted(key for key in self.storage_at[block_hash] if key.startswith(prefix) and key > start_key)
+            return keys[:page_size]
 
-        cls.kusama_substrate.rpc_request = MagicMock(side_effect=mocked_request)
+        def query_storage_at(params):
+            keys, block_hash = params
+            return [{'block': block_hash, 'changes': [[key, self.storage_at[block_hash][key]] for key in keys]}]
+
+        self.get_keys_paged = Mock(side_effect=get_keys_paged)
+        self.kusama_substrate.rpc_results.update({
+            'state_getKeysPaged': self.get_keys_paged,
+            'state_queryStorageAt': query_storage_at,
+        })
 
     def test_claims_claim_map(self):
 
-        result = self.kusama_substrate.query_map('Claims', 'Claims', max_results=3, block_hash='0x4b313e72e3a524b98582c31cd3ff6f7f2ef5c38a3c899104a833e468bb1370a2')
+        result = self.kusama_substrate.query_map('Claims', 'Claims', max_results=3)
 
         records = [item for item in result]
 
         self.assertEqual(3, len(records))
         self.assertEqual(45880000000000, records[0][1].value)
-        self.assertEqual('0x00000a9c44f24e314127af63ae55b864a28d7aee', records[0][0].value)
-        self.assertEqual('0x00002f21194993a750972574e2d82ce8c95078a6', records[1][0].value)
-        self.assertEqual('0x0000a940f973ccf435ae9c040c253e1c043c5fb2', records[2][0].value)
+        self.assertEqual(list(CLAIM_ADDRESSES[:3]), [key.value for key, _ in records])
 
     def test_system_account_map_block_hash(self):
 
         # Retrieve first two records from System.Account query map
 
-        result = self.kusama_substrate.query_map(
-            'System', 'Account', page_size=1,
-            block_hash="0x587a1e69871c09f2408d724ceebbe16edc4a69139b5df9786e1057c4d041af73"
-        )
+        block_hash = self.kusama_substrate.parent_hash
+        result = self.kusama_substrate.query_map('System', 'Account', page_size=1, block_hash=block_hash)
 
         record_1_1 = next(result)
 
@@ -93,7 +116,9 @@ class QueryMapTestCase(unittest.TestCase):
 
         # Next record set must trigger RPC call
 
+        self.assertEqual(1, self.get_keys_paged.call_count)
         record_1_2 = next(result)
+        self.assertEqual(2, self.get_keys_paged.call_count)
 
         self.assertEqual(type(record_1_2[0]), GenericAccountId)
         self.assertIn('data', record_1_2[1].value)
@@ -101,10 +126,7 @@ class QueryMapTestCase(unittest.TestCase):
 
         # Same query map with yield of 2 must result in same records
 
-        result = self.kusama_substrate.query_map(
-            'System', 'Account', page_size=2,
-            block_hash="0x587a1e69871c09f2408d724ceebbe16edc4a69139b5df9786e1057c4d041af73"
-        )
+        result = self.kusama_substrate.query_map('System', 'Account', page_size=2, block_hash=block_hash)
 
         record_2_1 = next(result)
         record_2_2 = next(result)
@@ -115,47 +137,20 @@ class QueryMapTestCase(unittest.TestCase):
         self.assertEqual(record_1_2[1].value, record_2_2[1].value)
 
     def test_max_results(self):
-        result = self.kusama_substrate.query_map(
-            'Claims', 'Claims', max_results=5, page_size=100,
-            block_hash='0x4b313e72e3a524b98582c31cd3ff6f7f2ef5c38a3c899104a833e468bb1370a2'
-        )
-
-        # Keep iterating shouldn't trigger retrieve next page
-        result_count = 0
-        for _ in result:
-            result_count += 1
-
-        self.assertEqual(5, result_count)
-
-        result = self.kusama_substrate.query_map(
-            'Claims', 'Claims', max_results=5, page_size=2,
-            block_hash='0x4b313e72e3a524b98582c31cd3ff6f7f2ef5c38a3c899104a833e468bb1370a2'
-        )
-
-        # Keep iterating shouldn't exceed max_results
-        result_count = 0
-        for record in result:
-            result_count += 1
-            if result_count == 1:
-                self.assertEqual('0x00000a9c44f24e314127af63ae55b864a28d7aee', record[0].value)
-            elif result_count == 2:
-                self.assertEqual('0x00002f21194993a750972574e2d82ce8c95078a6', record[0].value)
-            elif result_count == 3:
-                self.assertEqual('0x0000a940f973ccf435ae9c040c253e1c043c5fb2', record[0].value)
-
-        self.assertEqual(5, result_count)
+        for page_size, expected_requests in ((100, 1), (2, 2)):
+            with self.subTest(page_size=page_size):
+                self.get_keys_paged.reset_mock()
+                result = self.kusama_substrate.query_map('Claims', 'Claims', max_results=3, page_size=page_size)
+                self.assertEqual(list(CLAIM_ADDRESSES[:3]), [key.value for key, _ in result])
+                self.assertEqual(expected_requests, self.get_keys_paged.call_count)
 
     def test_result_exhausted(self):
         result = self.kusama_substrate.query_map(
             module='Claims', storage_function='Claims',
-            block_hash='0x2e8047826d028f5cc092f5e694860efbd4f74ee1535424cdf3626a175867db62'
+            block_hash=self.kusama_substrate.parent_hash
         )
-
-        result_count = 0
-        for _ in result:
-            result_count += 1
-
-        self.assertEqual(4, result_count)
+        self.assertEqual(list(CLAIM_ADDRESSES[:4]), [key.value for key, _ in result])
+        self.assertEqual(2, self.get_keys_paged.call_count)
 
     def test_non_existing_query_map(self):
         with self.assertRaises(ValueError) as cm:
@@ -180,17 +175,13 @@ class QueryMapTestCase(unittest.TestCase):
             module='Staking',
             storage_function='ErasStakers',
             params=[2185],
-            max_results=4,
-            block_hash="0x61dd66907df3187fd1438463f2c87f0d596797936e0a292f6f98d12841da2325"
+            max_results=4
         )
 
         records = list(era_stakers)
 
-        self.assertEqual(len(records), 4)
-        self.assertEqual(records[0][0].ss58_address, 'JCghFN7mD4ETKzMbvSVmMMPwWutJGk6Bm1yKWk8Z9KhPGeZ')
-        self.assertEqual(records[1][0].ss58_address, 'CmNv7yFV13CMM6r9dJYgdi4UTJK7tzFEF17gmK9c3mTc2PG')
-        self.assertEqual(records[2][0].ss58_address, 'DfishveZoxSRNRb8FtyS7ignbw6cr32eCY2w6ctLDRM1NQz')
-        self.assertEqual(records[3][0].ss58_address, 'HmsTAS1bCtZc9FSq9nqJzZCEkhhSygtXj9TDxNgEWTHnpyQ')
+        self.assertEqual(list(STAKER_ADDRESSES), [key.ss58_address for key, _ in records])
+        self.assertEqual({'total': 1, 'own': 1, 'others': []}, records[0][1].value)
 
     def test_double_map_page_size(self):
         era_stakers = self.kusama_substrate.query_map(
@@ -198,24 +189,17 @@ class QueryMapTestCase(unittest.TestCase):
             storage_function='ErasStakers',
             params=[2185],
             max_results=4,
-            page_size=1,
-            block_hash="0x61dd66907df3187fd1438463f2c87f0d596797936e0a292f6f98d12841da2325"
+            page_size=1
         )
 
-        records = list(era_stakers)
-
-        self.assertEqual(len(records), 4)
-        self.assertEqual(records[0][0].ss58_address, 'JCghFN7mD4ETKzMbvSVmMMPwWutJGk6Bm1yKWk8Z9KhPGeZ')
-        self.assertEqual(records[1][0].ss58_address, 'CmNv7yFV13CMM6r9dJYgdi4UTJK7tzFEF17gmK9c3mTc2PG')
-        self.assertEqual(records[2][0].ss58_address, 'DfishveZoxSRNRb8FtyS7ignbw6cr32eCY2w6ctLDRM1NQz')
-        self.assertEqual(records[3][0].ss58_address, 'HmsTAS1bCtZc9FSq9nqJzZCEkhhSygtXj9TDxNgEWTHnpyQ')
+        self.assertEqual(list(STAKER_ADDRESSES), [key.ss58_address for key, _ in era_stakers])
+        self.assertEqual(4, self.get_keys_paged.call_count)
 
     def test_double_map_no_result(self):
         era_stakers = self.kusama_substrate.query_map(
             module='Staking',
             storage_function='ErasStakers',
-            params=[21000000],
-            block_hash="0x61dd66907df3187fd1438463f2c87f0d596797936e0a292f6f98d12841da2325"
+            params=[21000000]
         )
         self.assertEqual(era_stakers.records, [])
 
@@ -236,6 +220,30 @@ class QueryMapTestCase(unittest.TestCase):
                 params=[2]
             )
         self.assertEqual('Storage function map can accept max 0 parameters, 1 given', str(cm.exception))
+
+
+@settings.requires_live_node
+class HistoricalQueryMapTestCase(unittest.TestCase):
+    def setUp(self):
+        self.substrate = SubstrateInterface(url=settings.KUSAMA_NODE_URL, ss58_format=2, type_registry_preset='kusama')
+        self.addCleanup(self.substrate.close)
+
+    def test_claims_claim_map(self):
+        result = self.substrate.query_map(
+            'Claims', 'Claims', max_results=3,
+            block_hash='0x4b313e72e3a524b98582c31cd3ff6f7f2ef5c38a3c899104a833e468bb1370a2'
+        )
+        records = list(result)
+
+        self.assertEqual(list(CLAIM_ADDRESSES[:3]), [key.value for key, _ in records])
+        self.assertEqual(45880000000000, records[0][1].value)
+
+    def test_double_map(self):
+        result = self.substrate.query_map(
+            'Staking', 'ErasStakers', params=[2185], max_results=4,
+            block_hash='0x61dd66907df3187fd1438463f2c87f0d596797936e0a292f6f98d12841da2325'
+        )
+        self.assertEqual(list(STAKER_ADDRESSES), [key.ss58_address for key, _ in result])
 
 
 if __name__ == '__main__':

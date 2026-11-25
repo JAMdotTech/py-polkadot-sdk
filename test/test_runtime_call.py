@@ -15,37 +15,45 @@
 # limitations under the License.
 
 import unittest
-from unittest.mock import MagicMock
+from struct import pack
+from unittest.mock import Mock
 
-from substrateinterface import SubstrateInterface, Keypair
-from substrateinterface.exceptions import StorageFunctionNotFound
-from test import settings
+from substrateinterface import Keypair
+from test.fixtures import RuntimeFixture
 
 
 class RuntimeCallTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.substrate = SubstrateInterface(
-            url=settings.POLKADOT_NODE_URL,
-            ss58_format=0,
-            type_registry_preset='polkadot'
-        )
-        # Create new keypair
-        mnemonic = Keypair.generate_mnemonic()
-        cls.keypair = Keypair.create_from_mnemonic(mnemonic)
+        cls.substrate = RuntimeFixture()
+        cls.keypair = Keypair.create_from_uri('//Alice')
+
+    def setUp(self):
+        # Core_version returns two compact-length strings, three u32s, an empty API list, and two version fields.
+        runtime_version = b'\x20polkadot\x20polkadot' + pack('<IIIBIB', 1, 2023, 1, 0, 1, 1)
+        # An optional inclusion fee with three balances, followed by the tip.
+        fee_details = b'\x01' + b''.join(fee.to_bytes(16, 'little') for fee in (100, 200, 300, 0))
+        results = {
+            'Core_version': '0x' + runtime_version.hex(),
+            'TransactionPaymentApi_query_fee_details': '0x' + fee_details.hex(),
+        }
+        self.state_call = Mock(side_effect=lambda params: results[params[0]])
+        self.substrate.rpc_results['state_call'] = self.state_call
 
     def test_core_version(self):
         result = self.substrate.runtime_call("Core", "version")
 
-        self.assertGreater(result.value['spec_version'], 0)
+        self.state_call.assert_called_once_with(['Core_version', '0x', None])
+        self.assertEqual(2023, result.value['spec_version'])
         self.assertEqual('polkadot', result.value['spec_name'])
 
     def test_core_version_at_not_best_block(self):
         parent_hash = self.substrate.get_block_header()['header']['parentHash']
-        result = self.substrate.runtime_call("Core", "version", block_hash = parent_hash)
+        result = self.substrate.runtime_call("Core", "version", block_hash=parent_hash)
 
-        self.assertGreater(result.value['spec_version'], 0)
+        self.state_call.assert_called_once_with(['Core_version', '0x', parent_hash])
+        self.assertEqual(2023, result.value['spec_version'])
         self.assertEqual('polkadot', result.value['spec_name'])
 
     def test_transaction_payment(self):
@@ -58,13 +66,15 @@ class RuntimeCallTestCase(unittest.TestCase):
             }
         )
 
-        extrinsic = self.substrate.create_signed_extrinsic(call=call, keypair=self.keypair, tip=1)
+        extrinsic = self.substrate.create_signed_extrinsic(call=call, keypair=self.keypair, nonce=0, tip=1)
         extrinsic_len = self.substrate.create_scale_object('u32')
         extrinsic_len.encode(len(extrinsic.data))
 
         result = self.substrate.runtime_call("TransactionPaymentApi", "query_fee_details", [extrinsic, extrinsic_len])
 
-        self.assertGreater(result.value['inclusion_fee']['base_fee'], 0)
+        encoded_params = str(extrinsic.data) + pack('<I', len(extrinsic.data)).hex()
+        self.state_call.assert_called_once_with(['TransactionPaymentApi_query_fee_details', encoded_params, None])
+        self.assertEqual(100, result.value['inclusion_fee']['base_fee'])
         self.assertEqual(0, result.value['tip'])
 
     def test_metadata_call_info(self):

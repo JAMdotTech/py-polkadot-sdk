@@ -15,27 +15,36 @@
 # limitations under the License.
 
 import unittest
-from unittest.mock import MagicMock
 
-from substrateinterface import SubstrateInterface
 from substrateinterface.exceptions import StorageFunctionNotFound
-from test import settings
+from test.fixtures import RuntimeFixture
 
 
 class QueryTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.kusama_substrate = SubstrateInterface(
-            url=settings.KUSAMA_NODE_URL,
-            ss58_format=2,
-            type_registry_preset='kusama'
+        account_key = (
+            '0x26aa394eea5630e07c48ae0c9558cef7b99d880ec681799c0cf30e8886371da9c6'
+            '578749d1ec13f7371fe167d9b39dc26e4f8120ba0ce9fa1d34bbb604860b6dee2873c0303a7aa6453902c6e9268462'
         )
-
-        cls.polkadot_substrate = SubstrateInterface(
-            url=settings.POLKADOT_NODE_URL,
-            ss58_format=0,
-            type_registry_preset='polkadot'
+        account_data = (
+            (67501).to_bytes(4, 'little') + bytes(12) + (1099945000512).to_bytes(16, 'little') + bytes(48)
+        )
+        values = {
+            account_key: '0x' + account_data.hex(),
+            '0x3a636f6465': '0x0061736d01000000',
+            '0xc2261276cc9d1f8598ea4b6a74b15c2f4e7b9012096b41c4eb3aaf947f6ea429': '0x0100',
+        }
+        cls.kusama_substrate = RuntimeFixture(rpc_results={
+            'state_getStorage': lambda params: values.get(params[0]),
+            'state_queryStorageAt': lambda params: [{'changes': [(key, values.get(key)) for key in params[0]]}],
+        })
+        claims_key = '0x9c5d795d0297be56027a4b2464e333979c5d795d0297be56027a4b2464e3339700000a9c44f24e314127af63ae55b864a28d7aee'
+        claims_values = {claims_key: '0x' + (45880000000000).to_bytes(16, 'little').hex()}
+        cls.claims_substrate = RuntimeFixture(
+            metadata_version='kusama_test',
+            rpc_results={'state_getStorage': lambda params: claims_values.get(params[0])},
         )
 
     def test_system_account(self):
@@ -62,7 +71,7 @@ class QueryTestCase(unittest.TestCase):
             {
                 'nonce': 0, 'consumers': 0, 'providers': 0, 'sufficients': 0,
                 'data': {
-                    'free': 0, 'reserved': 0, 'frozen': 0, 'flags': 170141183460469231731687303715884105728
+                    'free': 0, 'reserved': 0, 'misc_frozen': 0, 'fee_frozen': 0
                 }
             }, result.value)
 
@@ -99,7 +108,7 @@ class QueryTestCase(unittest.TestCase):
         self.assertEqual(result.meta_info['result_found'], False)
 
     def test_identity_hasher(self):
-        result = self.kusama_substrate.query("Claims", "Claims", ["0x00000a9c44f24e314127af63ae55b864a28d7aee"], block_hash='0x4b313e72e3a524b98582c31cd3ff6f7f2ef5c38a3c899104a833e468bb1370a2')
+        result = self.claims_substrate.query("Claims", "Claims", ["0x00000a9c44f24e314127af63ae55b864a28d7aee"], block_hash='0x4b313e72e3a524b98582c31cd3ff6f7f2ef5c38a3c899104a833e468bb1370a2')
         self.assertEqual(45880000000000, result.value)
 
     def test_well_known_keys_result(self):

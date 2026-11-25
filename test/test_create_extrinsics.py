@@ -13,45 +13,37 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
 import unittest
+from struct import pack
+from unittest.mock import patch
 
-from scalecodec import ScaleBytes
-from scalecodec.type_registry import load_type_registry_file
 from substrateinterface import SubstrateInterface, Keypair, ExtrinsicReceipt
 from substrateinterface.exceptions import SubstrateRequestException
 from test import settings
+from test.fixtures import RuntimeFixture
 
 
 class CreateExtrinsicsTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.kusama_substrate = SubstrateInterface(
-            url=settings.KUSAMA_NODE_URL,
-            ss58_format=2,
-            type_registry_preset='kusama'
+        payment_info = pack('<QB', 1234, 0) + (123456).to_bytes(16, 'little')
+        runtime_results = {
+            'AccountNonceApi_account_nonce': '0x00000000',
+            'TransactionPaymentApi_query_info': '0x' + payment_info.hex(),
+        }
+        cls.substrate = RuntimeFixture(
+            rpc_results={
+                'state_getStorage': None,
+                'state_call': lambda params: runtime_results[params[0]],
+            },
         )
-
-        cls.polkadot_substrate = SubstrateInterface(
-            url=settings.POLKADOT_NODE_URL,
-            ss58_format=0,
-            type_registry_preset='polkadot'
-        )
-
-        module_path = os.path.dirname(__file__)
-        cls.metadata_fixture_dict = load_type_registry_file(
-            os.path.join(module_path, 'fixtures', 'metadata_hex.json')
-        )
-
-        # Create new keypair
-        mnemonic = Keypair.generate_mnemonic()
-        cls.keypair = Keypair.create_from_mnemonic(mnemonic)
+        cls.keypair = Keypair.create_from_uri('//Dave')
 
     def test_create_extrinsic_metadata_v14(self):
 
         # Create balance transfer call
-        call = self.kusama_substrate.compose_call(
+        call = self.substrate.compose_call(
             call_module='Balances',
             call_function='transfer_keep_alive',
             call_params={
@@ -60,9 +52,9 @@ class CreateExtrinsicsTestCase(unittest.TestCase):
             }
         )
 
-        extrinsic = self.kusama_substrate.create_signed_extrinsic(call=call, keypair=self.keypair, tip=1)
+        extrinsic = self.substrate.create_signed_extrinsic(call=call, keypair=self.keypair, tip=1)
 
-        decoded_extrinsic = self.kusama_substrate.create_scale_object("Extrinsic")
+        decoded_extrinsic = self.substrate.create_scale_object("Extrinsic")
         decoded_extrinsic.decode(extrinsic.data)
 
         self.assertEqual(decoded_extrinsic['call']['call_module'].name, 'Balances')
@@ -72,32 +64,7 @@ class CreateExtrinsicsTestCase(unittest.TestCase):
 
     def test_create_mortal_extrinsic(self):
 
-        for substrate in [self.kusama_substrate, self.polkadot_substrate]:
-
-            # Create balance transfer call
-            call = substrate.compose_call(
-                call_module='Balances',
-                call_function='transfer_keep_alive',
-                call_params={
-                    'dest': 'EaG2CRhJWPb7qmdcJvy3LiWdh26Jreu9Dx6R1rXxPmYXoDk',
-                    'value': 3 * 10 ** 3
-                }
-            )
-
-            extrinsic = substrate.create_signed_extrinsic(call=call, keypair=self.keypair, era={'period': 64})
-
-            try:
-                substrate.submit_extrinsic(extrinsic)
-
-                self.fail('Should raise no funds to pay fees exception')
-
-            except SubstrateRequestException as e:
-                # Extrinsic should be successful if account had balance, eitherwise 'Bad proof' error should be raised
-                pass
-
-    def test_create_batch_extrinsic(self):
-
-        balance_call = self.polkadot_substrate.compose_call(
+        call = self.substrate.compose_call(
             call_module='Balances',
             call_function='transfer_keep_alive',
             call_params={
@@ -106,7 +73,28 @@ class CreateExtrinsicsTestCase(unittest.TestCase):
             }
         )
 
-        call = self.polkadot_substrate.compose_call(
+        extrinsic = self.substrate.create_signed_extrinsic(call=call, keypair=self.keypair, era={'period': 64})
+        self.assertEqual(extrinsic['era'].value, {'period': 64, 'current': 100})
+
+        error = {'code': 1010, 'message': 'Invalid Transaction', 'data': 'Inability to pay some fees'}
+        with patch.object(self.substrate, 'rpc_request', return_value={'error': error}) as rpc_request:
+            with self.assertRaises(SubstrateRequestException) as exc:
+                self.substrate.submit_extrinsic(extrinsic)
+        self.assertEqual(exc.exception.args[0], error)
+        rpc_request.assert_called_once_with('author_submitExtrinsic', [str(extrinsic.data)])
+
+    def test_create_batch_extrinsic(self):
+
+        balance_call = self.substrate.compose_call(
+            call_module='Balances',
+            call_function='transfer_keep_alive',
+            call_params={
+                'dest': 'EaG2CRhJWPb7qmdcJvy3LiWdh26Jreu9Dx6R1rXxPmYXoDk',
+                'value': 3 * 10 ** 3
+            }
+        )
+
+        call = self.substrate.compose_call(
             call_module='Utility',
             call_function='batch',
             call_params={
@@ -114,7 +102,7 @@ class CreateExtrinsicsTestCase(unittest.TestCase):
             }
         )
 
-        extrinsic = self.polkadot_substrate.create_signed_extrinsic(call=call, keypair=self.keypair, era={'period': 64})
+        extrinsic = self.substrate.create_signed_extrinsic(call=call, keypair=self.keypair, era={'period': 64})
 
         # Decode extrinsic again as test
         extrinsic.decode(extrinsic.data)
@@ -124,7 +112,7 @@ class CreateExtrinsicsTestCase(unittest.TestCase):
 
     def test_create_multisig_extrinsic(self):
 
-        call = self.kusama_substrate.compose_call(
+        call = self.substrate.compose_call(
             call_module='Balances',
             call_function='transfer_keep_alive',
             call_params={
@@ -133,11 +121,11 @@ class CreateExtrinsicsTestCase(unittest.TestCase):
             }
         )
 
-        keypair_alice = Keypair.create_from_uri('//Alice', ss58_format=self.polkadot_substrate.ss58_format)
-        keypair_bob = Keypair.create_from_uri('//Bob', ss58_format=self.polkadot_substrate.ss58_format)
-        keypair_charlie = Keypair.create_from_uri('//Charlie', ss58_format=self.polkadot_substrate.ss58_format)
+        keypair_alice = Keypair.create_from_uri('//Alice', ss58_format=self.substrate.ss58_format)
+        keypair_bob = Keypair.create_from_uri('//Bob', ss58_format=self.substrate.ss58_format)
+        keypair_charlie = Keypair.create_from_uri('//Charlie', ss58_format=self.substrate.ss58_format)
 
-        multisig_account = self.kusama_substrate.generate_multisig_account(
+        multisig_account = self.substrate.generate_multisig_account(
             signatories=[
                 keypair_alice.ss58_address,
                 keypair_bob.ss58_address,
@@ -146,7 +134,7 @@ class CreateExtrinsicsTestCase(unittest.TestCase):
             threshold=2
         )
 
-        extrinsic = self.kusama_substrate.create_multisig_extrinsic(call, self.keypair, multisig_account, era={'period': 64})
+        extrinsic = self.substrate.create_multisig_extrinsic(call, self.keypair, multisig_account, era={'period': 64})
 
         # Decode extrinsic again as test
         extrinsic.decode(extrinsic.data)
@@ -156,7 +144,7 @@ class CreateExtrinsicsTestCase(unittest.TestCase):
 
     def test_create_unsigned_extrinsic(self):
 
-        call = self.kusama_substrate.compose_call(
+        call = self.substrate.compose_call(
             call_module='Timestamp',
             call_function='set',
             call_params={
@@ -164,13 +152,13 @@ class CreateExtrinsicsTestCase(unittest.TestCase):
             }
         )
 
-        extrinsic = self.kusama_substrate.create_unsigned_extrinsic(call)
-        self.assertEqual(str(extrinsic.data), '0x280402000ba09cc0317501')
+        extrinsic = self.substrate.create_unsigned_extrinsic(call)
+        self.assertEqual(str(extrinsic.data), '0x280403000ba09cc0317501')
 
     def test_payment_info(self):
         keypair = Keypair(ss58_address="EaG2CRhJWPb7qmdcJvy3LiWdh26Jreu9Dx6R1rXxPmYXoDk")
 
-        call = self.kusama_substrate.compose_call(
+        call = self.substrate.compose_call(
             call_module='Balances',
             call_function='transfer_keep_alive',
             call_params={
@@ -178,45 +166,41 @@ class CreateExtrinsicsTestCase(unittest.TestCase):
                 'value': 2000
             }
         )
-        payment_info = self.kusama_substrate.get_payment_info(call=call, keypair=keypair)
+        payment_info = self.substrate.get_payment_info(call=call, keypair=keypair)
 
-        self.assertIn('class', payment_info)
-        self.assertIn('partialFee', payment_info)
-        self.assertIn('weight', payment_info)
-
-        self.assertGreater(payment_info['partialFee'], 0)
+        self.assertEqual(payment_info, {'class': 'Normal', 'partialFee': 123456, 'weight': 1234})
 
     def test_generate_signature_payload_lte_256_bytes(self):
 
-        call = self.kusama_substrate.compose_call(
+        call = self.substrate.compose_call(
             call_module='System',
             call_function='remark',
             call_params={
-                'remark': '0x' + ('01' * 175)
+                'remark': '0x' + ('01' * 177)
             }
         )
 
-        signature_payload = self.kusama_substrate.generate_signature_payload(call=call)
+        signature_payload = self.substrate.generate_signature_payload(call=call)
 
         self.assertEqual(signature_payload.length, 256)
 
     def test_generate_signature_payload_gt_256_bytes(self):
 
-        call = self.kusama_substrate.compose_call(
+        call = self.substrate.compose_call(
             call_module='System',
             call_function='remark',
             call_params={
-                'remark': '0x' + ('01' * 176)
+                'remark': '0x' + ('01' * 178)
             }
         )
 
-        signature_payload = self.kusama_substrate.generate_signature_payload(call=call)
+        signature_payload = self.substrate.generate_signature_payload(call=call)
 
         self.assertEqual(signature_payload.length, 32)
 
     def test_create_extrinsic_bytes_signature(self):
         # Create balance transfer call
-        call = self.kusama_substrate.compose_call(
+        call = self.substrate.compose_call(
             call_module='Balances',
             call_function='transfer_keep_alive',
             call_params={
@@ -228,17 +212,56 @@ class CreateExtrinsicsTestCase(unittest.TestCase):
         signature_hex = '01741d037f6ea0c5269c6d78cde9505178ee928bb1077db49c684f9d1cad430e767e09808bc556ea2962a7b21a' \
                         'ada78b3aaf63a8b41e035acfdb0f650634863f83'
 
-        extrinsic = self.kusama_substrate.create_signed_extrinsic(
+        extrinsic = self.substrate.create_signed_extrinsic(
             call=call, keypair=self.keypair, signature=f'0x{signature_hex}'
         )
 
         self.assertEqual(extrinsic.value['signature']['Sr25519'], f'0x{signature_hex[2:]}')
 
-        extrinsic = self.kusama_substrate.create_signed_extrinsic(
+        extrinsic = self.substrate.create_signed_extrinsic(
             call=call, keypair=self.keypair, signature=bytes.fromhex(signature_hex)
         )
 
         self.assertEqual(extrinsic.value['signature']['Sr25519'], f'0x{signature_hex[2:]}')
+
+    def test_extrinsic_result_set_readonly_attr(self):
+        result = ExtrinsicReceipt(
+            substrate=self.substrate,
+            extrinsic_hash="0xa5f2b9f4b8ea9f357780dd49010c99708f580a02624e4500af24b20b92773100"
+        )
+        with self.assertRaises(AttributeError):
+            result.is_success = False
+
+        with self.assertRaises(AttributeError):
+            result.triggered_events = False
+
+    def test_extrinsic_result_no_blockhash_check_events(self):
+
+        result = ExtrinsicReceipt(
+            substrate=self.substrate,
+            extrinsic_hash="0xa5f2b9f4b8ea9f357780dd49010c99708f580a02624e4500af24b20b92773100"
+        )
+
+        with self.assertRaises(ValueError) as cm:
+            result.triggered_events
+        self.assertEqual('ExtrinsicReceipt can\'t retrieve events because it\'s unknown which block_hash it is '
+                         'included, manually set block_hash or use `wait_for_inclusion` when sending extrinsic',
+                         str(cm.exception))
+
+
+@settings.requires_live_node
+class ExtrinsicReceiptIntegrationTestCase(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.kusama_substrate = SubstrateInterface(
+            url=settings.KUSAMA_NODE_URL, ss58_format=2, type_registry_preset='kusama',
+        )
+        cls.addClassCleanup(cls.kusama_substrate.close)
+        cls.polkadot_substrate = SubstrateInterface(
+            url=settings.POLKADOT_NODE_URL, ss58_format=0, type_registry_preset='polkadot',
+        )
+        cls.addClassCleanup(cls.polkadot_substrate.close)
 
     def test_check_extrinsic_receipt(self):
         result = ExtrinsicReceipt(
@@ -386,29 +409,6 @@ class CreateExtrinsicsTestCase(unittest.TestCase):
         self.assertTrue(result.is_success)
         self.assertEqual(1234000, result.weight)
 
-    def test_extrinsic_result_set_readonly_attr(self):
-        result = ExtrinsicReceipt(
-            substrate=self.kusama_substrate,
-            extrinsic_hash="0xa5f2b9f4b8ea9f357780dd49010c99708f580a02624e4500af24b20b92773100"
-        )
-        with self.assertRaises(AttributeError):
-            result.is_success = False
-
-        with self.assertRaises(AttributeError):
-            result.triggered_events = False
-
-    def test_extrinsic_result_no_blockhash_check_events(self):
-
-        result = ExtrinsicReceipt(
-            substrate=self.kusama_substrate,
-            extrinsic_hash="0xa5f2b9f4b8ea9f357780dd49010c99708f580a02624e4500af24b20b92773100"
-        )
-
-        with self.assertRaises(ValueError) as cm:
-            result.triggered_events
-        self.assertEqual('ExtrinsicReceipt can\'t retrieve events because it\'s unknown which block_hash it is '
-                         'included, manually set block_hash or use `wait_for_inclusion` when sending extrinsic',
-                         str(cm.exception))
 
 
 if __name__ == '__main__':
