@@ -16,8 +16,11 @@
 import unittest
 from unittest.mock import patch
 
+from scalecodec import ScaleBytes
+
 from substrateinterface import SubstrateInterface, Keypair, KeypairType
 from substrateinterface.constants import DEV_PHRASE
+from substrateinterface.utils.ss58 import ss58_encode
 from test import settings
 from test.fixtures import RuntimeFixture
 
@@ -98,6 +101,15 @@ class ReloadTypeRegistryTestCase(unittest.TestCase):
         self.substrate.reload_type_registry(use_remote_preset=False)
 
         self.assertEqual(u32_cls, self.substrate.runtime_config.get_decoder_class('Index'))
+
+    def test_account_decoders_keep_runtime_ss58_formats(self):
+        public_key = Keypair.create_from_uri('//Alice').public_key
+        default_decoder = self.substrate.runtime_config.get_decoder_class('AccountId')
+
+        with RuntimeFixture(ss58_format=2, auto_discover=False) as kusama:
+            kusama_decoder = kusama.runtime_config.get_decoder_class('AccountId')
+            self.assertEqual(default_decoder(data=ScaleBytes(public_key)).decode(), ss58_encode(public_key, 42))
+            self.assertEqual(kusama_decoder(data=ScaleBytes(public_key)).decode(), ss58_encode(public_key, 2))
 
 
 class PortableRegistryTestCase(unittest.TestCase):

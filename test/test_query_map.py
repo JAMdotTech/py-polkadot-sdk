@@ -110,7 +110,7 @@ class QueryMapTestCase(unittest.TestCase):
 
         record_1_1 = next(result)
 
-        self.assertEqual(type(record_1_1[0]), GenericAccountId)
+        self.assertIsInstance(record_1_1[0], GenericAccountId)
         self.assertIn('data', record_1_1[1].value)
         self.assertIn('nonce', record_1_1[1].value)
 
@@ -120,7 +120,7 @@ class QueryMapTestCase(unittest.TestCase):
         record_1_2 = next(result)
         self.assertEqual(2, self.get_keys_paged.call_count)
 
-        self.assertEqual(type(record_1_2[0]), GenericAccountId)
+        self.assertIsInstance(record_1_2[0], GenericAccountId)
         self.assertIn('data', record_1_2[1].value)
         self.assertIn('nonce', record_1_2[1].value)
 
